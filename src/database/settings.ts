@@ -14,7 +14,7 @@ export async function getSettings(): Promise<Settings> {
     telephone: settings.telephone || '+243 825 574 859 , +243 970 186 504 ',
     email: settings.email || '',
     numero_fiscal: settings.numero_fiscal || 'RCCM/22-A-132010318',
-    num_impot: settings.num_impot || 'A1703369G',
+    //num_impot: settings.num_impot || 'A1703369G',
     //IN : settings.IN || 'IN 07-G4701-N12731k',
     theme: (settings.theme as 'light' | 'dark') || 'light',
   };

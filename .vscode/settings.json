@@ -1,3 +1,6 @@
 {
-    "autoGitCopilot.enabled": true
+    "autoGitCopilot.enabled": true,
+    "cSpell.words": [
+        "delkarestaurant"
+    ]
 }

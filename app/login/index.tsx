@@ -155,10 +155,8 @@ export default function LoginScreen() {
 
           <View style={styles.hintContainer}>
             <Text style={[styles.hint, { color: theme.textSecondary }]}>
-              Demo: admin@deska.com / password
             </Text>
             <Text style={[styles.hint, { color: theme.textSecondary }]}>
-              Demo: cashier@deska.com / password
             </Text>
             <Text style={[styles.hint, { color: theme.textSecondary }]}>
               concepteur logiciel: Faraja malembe/ jamalTech

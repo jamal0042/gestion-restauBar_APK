@@ -39,7 +39,7 @@ export default function SettingsScreen() {
   const { user, logout } = useAuthStore();
 
   const [settings, setSettings] = useState<SettingsType>({
-    nom_etablissement: 'Mon Restaurant',
+    nom_etablissement: 'DESKA HôTEL',
     adresse: '',
     telephone: '',
     email: '',

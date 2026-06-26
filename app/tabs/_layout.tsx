@@ -18,7 +18,7 @@ export default function TabsLayout() {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
-          paddingBottom: 8,
+          paddingBottom: 16,
           paddingTop: 8,
           height: 64,
         },

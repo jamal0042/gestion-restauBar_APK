@@ -159,8 +159,8 @@ export default function LoginScreen() {
             <Text style={[styles.hint, { color: theme.textSecondary }]}>
             </Text>
             <Text style={[styles.hint, { color: theme.textSecondary }]}>
-              concepteur logiciel: Faraja malembe/ jamalTech
-              E-mail : malembefaraja@gmail.com
+              concepteur logiciel: Faraja malembe 
+              E-mail : malembefaraja@gmail.com,+243992720042
             </Text>
           </View>
         </View>

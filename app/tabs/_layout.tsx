@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, Platform } from 'react-native'; // Ajout de Platform
 import { useAuthStore } from '@/src/store/authStore';
 import { LayoutDashboard, ShoppingCart, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
 
@@ -18,15 +18,18 @@ export default function TabsLayout() {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
-          paddingBottom: 16,
-          paddingTop: 8,
-          height: 64,
+          
+          // --- CONFIGURATION CORRIGÉE POUR LE BAS DE L'ÉCRAN ---
+          height: Platform.OS === 'ios' ? 88 : 72, // Plus haut pour s'adapter aux écrans modernes
+          paddingTop: 12, // Donne de l'espace au-dessus de l'icône
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12, // Remonte le texte sur iOS (barre d'accueil) et Android
         },
         tabBarActiveTintColor: '#C2185B',
         tabBarInactiveTintColor: isDark ? '#9E9E9E' : '#757575',
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
+          marginTop: 4, // Un petit espace entre l'icône et le texte pour l'esthétique
         },
       }}
     >

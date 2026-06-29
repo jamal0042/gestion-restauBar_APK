@@ -1,12 +1,14 @@
 import { Tabs } from 'expo-router';
-import { useColorScheme, Platform } from 'react-native'; // Ajout de Platform
+import { useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import crucial pour la flexibilité
 import { useAuthStore } from '@/src/store/authStore';
-import { LayoutDashboard, ShoppingCart, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
+import { LayoutDashboard, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
 
 export default function TabsLayout() {
   const { user } = useAuthStore();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets(); // Récupère les zones sécurisées de l'écran (notch, home indicator)
 
   const isAdmin = user?.role === 'admin';
 
@@ -14,22 +16,25 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarPosition: 'bottom', // Force la position en bas
         tabBarStyle: {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
           
-          // --- CONFIGURATION CORRIGÉE POUR LE BAS DE L'ÉCRAN ---
-          height: Platform.OS === 'ios' ? 88 : 72, // Plus haut pour s'adapter aux écrans modernes
-          paddingTop: 12, // Donne de l'espace au-dessus de l'icône
-          paddingBottom: Platform.OS === 'ios' ? 28 : 12, // Remonte le texte sur iOS (barre d'accueil) et Android
+          // --- CONFIGURATION DYNAMIQUE ET FLEXIBLE ---
+          // Le height s'adapte automatiquement : base de 60px + la zone sécurisée du bas de l'appareil
+          height: 60 + insets.bottom, 
+          paddingTop: 8,
+          // Si l'appareil n'a pas de zone sécurisée en bas (ex: vieux Android), on met 8px par défaut
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8, 
         },
         tabBarActiveTintColor: '#C2185B',
         tabBarInactiveTintColor: isDark ? '#9E9E9E' : '#757575',
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11, // Légèrement réduit pour éviter que le texte ne se cache sur les petits écrans
           fontWeight: '500',
-          marginTop: 4, // Un petit espace entre l'icône et le texte pour l'esthétique
+          marginTop: 2,
         },
       }}
     >

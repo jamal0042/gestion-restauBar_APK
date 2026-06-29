@@ -10,10 +10,10 @@ import {
   Platform,
   ScrollView,
   useColorScheme,
-  Image,
+  Image, // Assure-toi que l'import de Image est conservé ici
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Store, Eye, EyeOff, Wifi, WifiOff } from 'lucide-react-native';
+import { Eye, EyeOff, Wifi, WifiOff } from 'lucide-react-native'; // Retrait de l'icône Store devenue inutile
 import { getUserByEmail } from '@/src/database';
 import { useAuthStore } from '@/src/store/authStore';
 import { lightTheme, darkTheme } from '@/src/utils/theme';
@@ -71,9 +71,19 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
+          
+          {/* ========================================================================= */}
+          {/* !!! ICI : L'INJECTION DE TON ICÔNE PERSONNALISÉE À LA PLACE DE <Store />   */}
+          {/* ========================================================================= */}
           <View style={styles.iconContainer}>
-            <Store color={theme.white} size={48} />
+            <Image 
+              source={require('@/assets/images/icon.png')} // <-- Vérifie bien que ton fichier est ici
+              style={styles.logoImage}
+              resizeMode="cover"
+            />
           </View>
+          {/* ========================================================================= */}
+
           <Text style={[styles.title, { color: theme.text }]}>DeskaHÔTEL</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             Gestion des ventes
@@ -155,11 +165,9 @@ export default function LoginScreen() {
 
           <View style={styles.hintContainer}>
             <Text style={[styles.hint, { color: theme.textSecondary }]}>
-            </Text>
-            <Text style={[styles.hint, { color: theme.textSecondary }]}>
-            </Text>
-            <Text style={[styles.hint, { color: theme.textSecondary }]}>
               concepteur logiciel: Faraja malembe 
+            </Text>
+            <Text style={[styles.hint, { color: theme.textSecondary }]}>
               E-mail : malembefaraja@gmail.com,+243992720042
             </Text>
           </View>
@@ -182,10 +190,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
+  
+  // =========================================================================
+  // !!! ICI : ADAPTATION DU DOSSIER CONTENEUR ET DU STYLE DE L'IMAGE
+  // =========================================================================
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 85,
+    height: 85,
+    borderRadius: 22,
     backgroundColor: '#C2185B',
     alignItems: 'center',
     justifyContent: 'center',
@@ -195,7 +207,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    overflow: 'hidden', // Empêche l'image carrée de dépasser des coins arrondis
   },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  // =========================================================================
+
   title: {
     fontSize: 28,
     fontWeight: '700',

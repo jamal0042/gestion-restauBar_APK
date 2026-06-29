@@ -1,14 +1,12 @@
 import { Tabs } from 'expo-router';
-import { useColorScheme } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme, Platform } from 'react-native'; // Ajout de Platform
 import { useAuthStore } from '@/src/store/authStore';
-import { LayoutDashboard, Package, Users, BarChart3, Settings, Receipt, History } from 'lucide-react-native';
+import { LayoutDashboard, ShoppingCart, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
 
 export default function TabsLayout() {
   const { user } = useAuthStore();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const insets = useSafeAreaInsets();
 
   const isAdmin = user?.role === 'admin';
 
@@ -16,89 +14,73 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        // Aligne l'icône à gauche et le texte à côté pour gagner un espace fou sur l'écran
-        tabBarLabelPosition: 'beside-icon', 
         tabBarStyle: {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
-          // Hauteur fluide et parfaitement adaptée aux encoches/barres de navigation
-          height: 54 + insets.bottom, 
-          paddingTop: 4,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 4,
+          
+          // --- CONFIGURATION CORRIGÉE POUR LE BAS DE L'ÉCRAN ---
+          height: Platform.OS === 'ios' ? 88 : 72, // Plus haut pour s'adapter aux écrans modernes
+          paddingTop: 12, // Donne de l'espace au-dessus de l'icône
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12, // Remonte le texte sur iOS (barre d'accueil) et Android
         },
         tabBarActiveTintColor: '#C2185B',
         tabBarInactiveTintColor: isDark ? '#9E9E9E' : '#757575',
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          fontSize: 12,
+          fontWeight: '500',
+          marginTop: 4, // Un petit espace entre l'icône et le texte pour l'esthétique
         },
       }}
     >
-      {/* 1. DASHBOARD / VENTES */}
       <Tabs.Screen
         name="index"
         options={{
           title: isAdmin ? 'Dashboard' : 'Ventes',
           tabBarIcon: ({ color, size }) => (
-            isAdmin ? <LayoutDashboard size={size - 2} color={color} /> : <Receipt size={size - 2} color={color} />
+            isAdmin ? <LayoutDashboard size={size} color={color} /> : <Receipt size={size} color={color} />
           ),
         }}
       />
-
-      {/* 2. PRODUITS */}
       <Tabs.Screen
         name="products"
         options={{
           title: 'Produits',
-          tabBarIcon: ({ color, size }) => <Package size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size }) => <Package size={size} color={color} />,
         }}
       />
-
-      {/* 3. UTILISATEURS (Masqué si pas Admin + Typage corrigé) */}
-      <Tabs.Screen
-        name="users"
-        options={{
-          title: 'Staff', 
-          href: (isAdmin ? '/tabs/users' : null) as any, 
-          tabBarIcon: ({ color, size }) => <Users size={size - 2} color={color} />,
-        }}
-      />
-
-      {/* 4. RAPPORTS (Masqué si pas Admin + Typage corrigé) */}
-      <Tabs.Screen
-        name="reports"
-        options={{
-          title: 'Rapports',
-          href: (isAdmin ? '/tabs/reports' : null) as any,
-          tabBarIcon: ({ color, size }) => <BarChart3 size={size - 2} color={color} />,
-        }}
-      />
-
-      {/* 5. HISTORIQUE (Masqué pour l'Admin + Typage corrigé) */}
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'Historique',
-          href: (!isAdmin ? '/tabs/history' : null) as any, 
-          tabBarIcon: ({ color, size }) => <History size={size - 2} color={color} />, 
-        }}
-      />
-
-      {/* 6. INVOICE (Fichier physique existant caché du menu pour éviter le triangle bonus) */}
-      <Tabs.Screen
-        name="invoice"
-        options={{
-          href: null as any, 
-        }}
-      />
-
-      {/* 7. PARAMÈTRES */}
+      {isAdmin && (
+        <Tabs.Screen
+          name="users"
+          options={{
+            title: 'Utilisateurs',
+            tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          }}
+        />
+      )}
+      {isAdmin && (
+        <Tabs.Screen
+          name="reports"
+          options={{
+            title: 'Rapports',
+            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+          }}
+        />
+      )}
+      {!isAdmin && (
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: 'Historique',
+            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+          }}
+        />
+      )}
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Config', 
-          tabBarIcon: ({ color, size }) => <Settings size={size - 2} color={color} />,
+          title: 'Paramètres',
+          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
         }}
       />
     </Tabs>

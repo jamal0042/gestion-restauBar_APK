@@ -2,7 +2,6 @@ import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/src/store/authStore';
-// Importation des bonnes icônes (Vérifie que Receipt et History sont bien importés)
 import { LayoutDashboard, Package, Users, BarChart3, Settings, Receipt, History } from 'lucide-react-native';
 
 export default function TabsLayout() {
@@ -17,13 +16,14 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        // REND LE MENU COMPACT : Met l'icône à gauche et le texte à côté pour éviter les "Dashb..."
+        // Aligne l'icône à gauche et le texte à côté pour gagner un espace fou sur l'écran
         tabBarLabelPosition: 'beside-icon', 
         tabBarStyle: {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
-          height: 54 + insets.bottom, // Un peu plus compact pour le mode "côte à côte"
+          // Hauteur fluide et parfaitement adaptée aux encoches/barres de navigation
+          height: 54 + insets.bottom, 
           paddingTop: 4,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 4,
         },
@@ -35,7 +35,7 @@ export default function TabsLayout() {
         },
       }}
     >
-      {/* 1. DASHBOARD / VENTES (index) */}
+      {/* 1. DASHBOARD / VENTES */}
       <Tabs.Screen
         name="index"
         options={{
@@ -55,41 +55,41 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* 3. UTILISATEURS (Visible UNIQUEMENT pour Admin) */}
+      {/* 3. UTILISATEURS (Masqué si pas Admin + Typage corrigé) */}
       <Tabs.Screen
         name="users"
         options={{
-          title: 'Staff', // "Staff" est plus court qu "Utilisateurs", ça aide l'écran !
-          href: isAdmin ? '/users' : null, // Masque complètement l'onglet si pas admin
+          title: 'Staff', 
+          href: (isAdmin ? '/tabs/users' : null) as any, 
           tabBarIcon: ({ color, size }) => <Users size={size - 2} color={color} />,
         }}
       />
 
-      {/* 4. RAPPORTS (Visible UNIQUEMENT pour Admin) */}
+      {/* 4. RAPPORTS (Masqué si pas Admin + Typage corrigé) */}
       <Tabs.Screen
         name="reports"
         options={{
           title: 'Rapports',
-          href: isAdmin ? '/reports' : null, // Masque si pas admin
+          href: (isAdmin ? '/tabs/reports' : null) as any,
           tabBarIcon: ({ color, size }) => <BarChart3 size={size - 2} color={color} />,
         }}
       />
 
-      {/* 5. HISTORIQUE (Visible UNIQUEMENT pour les non-admins) */}
+      {/* 5. HISTORIQUE (Masqué pour l'Admin + Typage corrigé) */}
       <Tabs.Screen
         name="history"
         options={{
           title: 'Historique',
-          href: !isAdmin ? '/history' : null, // Masque si admin (évite le doublon sur ton écran)
+          href: (!isAdmin ? '/tabs/history' : null) as any, 
           tabBarIcon: ({ color, size }) => <History size={size - 2} color={color} />, 
         }}
       />
 
-      {/* 6. INVOICE (Si c'est un fichier physique existant dans ton dossier app, on le cache ici) */}
+      {/* 6. INVOICE (Fichier physique existant caché du menu pour éviter le triangle bonus) */}
       <Tabs.Screen
         name="invoice"
         options={{
-          href: null, // Masque complètement du menu du bas car doublon avec l'index/ventes
+          href: null as any, 
         }}
       />
 
@@ -97,7 +97,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Config', // Plus court que "Paramètres"
+          title: 'Config', 
           tabBarIcon: ({ color, size }) => <Settings size={size - 2} color={color} />,
         }}
       />

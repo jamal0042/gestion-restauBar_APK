@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,10 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  useWindowDimensions,
+  PixelRatio,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   Receipt,
@@ -27,10 +30,25 @@ import { Order } from '@/src/types';
 
 type FilterType = 'all' | 'completed' | 'pending' | 'cancelled';
 
+// Helpers responsifs
+const scaleSize = (size: number, width: number) => {
+  const baseWidth = 375;
+  return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
+};
+
+const scaleFont = (size: number) => {
+  return PixelRatio.roundToNearestPixel(size * PixelRatio.getFontScale());
+};
+
 export default function HistoryScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  const isSmallScreen = screenWidth < 360;
+  const horizontalPadding = isSmallScreen ? 12 : 16;
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,9 +56,9 @@ export default function HistoryScreen() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-  
+
   // Animation pour l'icône de refresh
-  const spinValue = new Animated.Value(0);
+  const spinValue = useRef(new Animated.Value(0)).current;
   const spinAnimation = spinValue.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
@@ -53,10 +71,9 @@ export default function HistoryScreen() {
       } else {
         setLoading(true);
       }
-      
+
       const all = await getOrders();
-      // Tri par date décroissante (plus récentes en premier)
-      const sorted = all.sort((a, b) => 
+      const sorted = all.sort((a, b) =>
         new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       setOrders(sorted);
@@ -89,7 +106,7 @@ export default function HistoryScreen() {
     } else {
       spinValue.setValue(0);
     }
-  }, [loading, refreshing]);
+  }, [loading, refreshing, spinValue]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -112,7 +129,7 @@ export default function HistoryScreen() {
     } else if (days < 7) {
       return `Il y a ${days} jours`;
     }
-    
+
     return date.toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'short',
@@ -120,7 +137,6 @@ export default function HistoryScreen() {
     });
   };
 
-  // Mappings au lieu de switch pour plus de lisibilité
   const statusConfig: Record<string, { label: string; color: string }> = {
     completed: { label: 'Terminée', color: theme.success },
     pending: { label: 'En attente', color: theme.warning },
@@ -136,11 +152,10 @@ export default function HistoryScreen() {
   const getStatus = (status: string) => statusConfig[status] || { label: status, color: theme.textSecondary };
   const getPayment = (method?: string) => (method && paymentConfig[method]) || '💰 Non défini';
 
-  // Filtrage et recherche optimisés avec useMemo
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const matchesFilter = activeFilter === 'all' || order.status === activeFilter;
-      const matchesSearch = 
+      const matchesSearch =
         searchQuery === '' ||
         order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         order.payment_method?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -148,7 +163,6 @@ export default function HistoryScreen() {
     });
   }, [orders, activeFilter, searchQuery]);
 
-  // Statistiques du jour
   const stats = useMemo(() => {
     const today = new Date().toDateString();
     const todayOrders = orders.filter(
@@ -169,41 +183,49 @@ export default function HistoryScreen() {
 
   const renderOrder = ({ item }: { item: Order }) => {
     const status = getStatus(item.status);
-    
+    const iconSize = scaleSize(42, screenWidth);
+
     return (
       <TouchableOpacity
-        style={[styles.orderCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+        style={[styles.orderCard, { backgroundColor: theme.card, borderColor: theme.border, padding: scaleSize(14, screenWidth) }]}
         activeOpacity={0.7}
         onPress={() => router.push({ pathname: '/tabs/invoice', params: { orderId: item.id } })}
       >
         <View style={styles.orderHeader}>
-          <View style={[styles.iconWrapper, { backgroundColor: theme.primary + '15' }]}>
-            <Receipt size={20} color={theme.primary} />
+          <View style={[styles.iconWrapper, { 
+            backgroundColor: theme.primary + '15',
+            width: iconSize,
+            height: iconSize,
+            borderRadius: iconSize / 2,
+          }]}>
+            <Receipt size={scaleSize(20, screenWidth)} color={theme.primary} />
           </View>
           <View style={styles.orderInfo}>
-            <Text style={[styles.orderId, { color: theme.text }]}>{item.id}</Text>
-            <Text style={[styles.orderDate, { color: theme.textSecondary }]}>
+            <Text style={[styles.orderId, { color: theme.text, fontSize: scaleFont(14) }]} numberOfLines={1}>
+              {item.id}
+            </Text>
+            <Text style={[styles.orderDate, { color: theme.textSecondary, fontSize: scaleFont(12) }]} numberOfLines={1}>
               {formatDate(item.date)}
             </Text>
           </View>
           <View style={styles.orderRight}>
-            <Text style={[styles.orderTotal, { color: theme.primary }]}>
+            <Text style={[styles.orderTotal, { color: theme.primary, fontSize: scaleFont(15) }]} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(item.total)}
             </Text>
-            <ChevronRight size={18} color={theme.textSecondary} />
+            <ChevronRight size={scaleSize(16, screenWidth)} color={theme.textSecondary} />
           </View>
         </View>
-        
+
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        
+
         <View style={styles.orderFooter}>
           <View style={[styles.statusBadge, { backgroundColor: status.color + '18' }]}>
             <View style={[styles.statusDot, { backgroundColor: status.color }]} />
-            <Text style={[styles.statusText, { color: status.color }]}>
+            <Text style={[styles.statusText, { color: status.color, fontSize: scaleFont(11) }]}>
               {status.label}
             </Text>
           </View>
-          <Text style={[styles.paymentMethod, { color: theme.textSecondary }]}>
+          <Text style={[styles.paymentMethod, { color: theme.textSecondary, fontSize: scaleFont(11) }]} numberOfLines={1}>
             {getPayment(item.payment_method)}
           </Text>
         </View>
@@ -213,9 +235,9 @@ export default function HistoryScreen() {
 
   if (initialLoad) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+        <Text style={[styles.loadingText, { color: theme.textSecondary, fontSize: scaleFont(14) }]}>
           Chargement de l'historique...
         </Text>
       </View>
@@ -223,37 +245,61 @@ export default function HistoryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Historique</Text>
-        <TouchableOpacity 
-          onPress={() => loadOrders(true)} 
-          style={[styles.refreshBtn, { backgroundColor: theme.card }]}
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
+        <Text style={[styles.headerTitle, { color: theme.text, fontSize: scaleFont(24) }]}>Historique</Text>
+        <TouchableOpacity
+          onPress={() => loadOrders(true)}
+          style={[styles.refreshBtn, { 
+            backgroundColor: theme.card,
+            width: scaleSize(40, screenWidth),
+            height: scaleSize(40, screenWidth),
+            borderRadius: scaleSize(20, screenWidth),
+          }]}
           disabled={refreshing}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Animated.View style={{ transform: [{ rotate: spinAnimation }] }}>
-            <RefreshCw size={20} color={theme.primary} />
+            <RefreshCw size={scaleSize(20, screenWidth)} color={theme.primary} />
           </Animated.View>
         </TouchableOpacity>
       </View>
 
       {/* Statistiques du jour */}
-      <View style={[styles.statsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={[styles.statsCard, { 
+        backgroundColor: theme.card, 
+        borderColor: theme.border,
+        marginHorizontal: horizontalPadding,
+        padding: scaleSize(14, screenWidth),
+      }]}>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <View style={[styles.statIcon, { backgroundColor: theme.primary + '15' }]}>
-              <TrendingUp size={18} color={theme.primary} />
+            <View style={[styles.statIcon, { 
+              backgroundColor: theme.primary + '15',
+              width: scaleSize(36, screenWidth),
+              height: scaleSize(36, screenWidth),
+              borderRadius: scaleSize(18, screenWidth),
+            }]}>
+              <TrendingUp size={scaleSize(16, screenWidth)} color={theme.primary} />
             </View>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Aujourd'hui</Text>
-            <Text style={[styles.statValue, { color: theme.text }]}>{stats.count} vente{stats.count > 1 ? 's' : ''}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>Aujourd'hui</Text>
+            <Text style={[styles.statValue, { color: theme.text, fontSize: scaleFont(15) }]}>
+              {stats.count} vente{stats.count > 1 ? 's' : ''}
+            </Text>
           </View>
           <View style={[styles.statsSeparator, { backgroundColor: theme.border }]} />
           <View style={styles.statItem}>
-            <View style={[styles.statIcon, { backgroundColor: theme.success + '15' }]}>
-              <Receipt size={18} color={theme.success} />
+            <View style={[styles.statIcon, { 
+              backgroundColor: theme.success + '15',
+              width: scaleSize(36, screenWidth),
+              height: scaleSize(36, screenWidth),
+              borderRadius: scaleSize(18, screenWidth),
+            }]}>
+              <Receipt size={scaleSize(16, screenWidth)} color={theme.success} />
             </View>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total</Text>
-            <Text style={[styles.statValue, { color: theme.primary }]} numberOfLines={1}>
+            <Text style={[styles.statLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>Total</Text>
+            <Text style={[styles.statValue, { color: theme.primary, fontSize: scaleFont(15) }]} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(stats.total)}
             </Text>
           </View>
@@ -261,45 +307,56 @@ export default function HistoryScreen() {
       </View>
 
       {/* Barre de recherche */}
-      <View style={styles.searchContainer}>
-        <View style={[styles.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Search size={18} color={theme.textSecondary} />
+      <View style={[styles.searchContainer, { paddingHorizontal: horizontalPadding }]}>
+        <View style={[styles.searchBox, { 
+          backgroundColor: theme.card, 
+          borderColor: theme.border,
+          height: scaleSize(44, screenWidth),
+        }]}>
+          <Search size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
           <TextInput
-            style={[styles.searchInput, { color: theme.text }]}
+            style={[styles.searchInput, { color: theme.text, fontSize: scaleFont(14) }]}
             placeholder="Rechercher une commande..."
             placeholderTextColor={theme.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={18} color={theme.textSecondary} />
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       {/* Filtres */}
-      <View style={styles.filtersContainer}>
-        {filters.map((filter) => {
+      <FlatList
+        horizontal
+        data={filters}
+        keyExtractor={(item) => item.key}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.filtersList, { paddingHorizontal: horizontalPadding }]}
+        renderItem={({ item: filter }) => {
           const isActive = activeFilter === filter.key;
           return (
             <TouchableOpacity
-              key={filter.key}
               style={[
                 styles.filterChip,
                 {
                   backgroundColor: isActive ? theme.primary : theme.card,
                   borderColor: isActive ? theme.primary : theme.border,
+                  paddingHorizontal: isSmallScreen ? 10 : 12,
+                  paddingVertical: scaleSize(8, screenWidth),
                 },
               ]}
               onPress={() => setActiveFilter(filter.key)}
               activeOpacity={0.7}
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             >
               <Text
                 style={[
                   styles.filterText,
-                  { color: isActive ? '#FFFFFF' : theme.text },
+                  { color: isActive ? '#FFFFFF' : theme.text, fontSize: scaleFont(12) },
                 ]}
               >
                 {filter.label}
@@ -315,7 +372,7 @@ export default function HistoryScreen() {
                 <Text
                   style={[
                     styles.filterCountText,
-                    { color: isActive ? '#FFFFFF' : theme.textSecondary },
+                    { color: isActive ? '#FFFFFF' : theme.textSecondary, fontSize: scaleFont(10) },
                   ]}
                 >
                   {filter.count}
@@ -323,18 +380,21 @@ export default function HistoryScreen() {
               </View>
             </TouchableOpacity>
           );
-        })}
-      </View>
+        }}
+      />
 
+      {/* Liste des commandes */}
       <FlatList
         data={filteredOrders}
         renderItem={renderOrder}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
           styles.ordersList,
+          { paddingHorizontal: horizontalPadding },
           filteredOrders.length === 0 && styles.emptyList,
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -344,16 +404,22 @@ export default function HistoryScreen() {
           />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIcon, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <Receipt size={40} color={theme.textSecondary} />
+          <View style={[styles.emptyContainer, { paddingVertical: screenHeight * 0.12 }]}>
+            <View style={[styles.emptyIcon, { 
+              backgroundColor: theme.card, 
+              borderColor: theme.border,
+              width: scaleSize(72, screenWidth),
+              height: scaleSize(72, screenWidth),
+              borderRadius: scaleSize(36, screenWidth),
+            }]}>
+              <Receipt size={scaleSize(32, screenWidth)} color={theme.textSecondary} />
             </View>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            <Text style={[styles.emptyTitle, { color: theme.text, fontSize: scaleFont(16) }]}>
               {searchQuery || activeFilter !== 'all' ? 'Aucun résultat' : 'Aucune vente'}
             </Text>
-            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-              {searchQuery || activeFilter !== 'all' 
-                ? 'Essayez avec d\'autres critères' 
+            <Text style={[styles.emptySubtitle, { color: theme.textSecondary, fontSize: scaleFont(13) }]}>
+              {searchQuery || activeFilter !== 'all'
+                ? 'Essayez avec d\'autres critères'
                 : 'Les ventes apparaîtront ici'}
             </Text>
           </View>
@@ -369,33 +435,24 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 12,
+    paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 24,
     fontWeight: '700',
   },
   refreshBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   statsCard: {
-    marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 16,
     borderWidth: 1,
-    padding: 16,
   },
   statsRow: {
     flexDirection: 'row',
@@ -406,19 +463,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   statLabel: {
-    fontSize: 12,
     marginBottom: 2,
   },
   statValue: {
-    fontSize: 16,
     fontWeight: '700',
   },
   statsSeparator: {
@@ -426,7 +478,6 @@ const styles = StyleSheet.create({
     height: 50,
   },
   searchContainer: {
-    paddingHorizontal: 16,
     marginBottom: 12,
   },
   searchBox: {
@@ -434,32 +485,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 14,
-    height: 46,
     borderRadius: 12,
     borderWidth: 1,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
     paddingVertical: 0,
   },
-  filtersContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+  filtersList: {
     gap: 8,
+    marginBottom: 16,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
   },
   filterText: {
-    fontSize: 13,
     fontWeight: '600',
   },
   filterCount: {
@@ -471,11 +515,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   filterCountText: {
-    fontSize: 11,
     fontWeight: '700',
   },
   ordersList: {
-    paddingHorizontal: 16,
     paddingBottom: 20,
     gap: 10,
   },
@@ -485,7 +527,6 @@ const styles = StyleSheet.create({
   orderCard: {
     borderRadius: 14,
     borderWidth: 1,
-    padding: 14,
   },
   orderHeader: {
     flexDirection: 'row',
@@ -493,21 +534,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconWrapper: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
   },
   orderInfo: {
     flex: 1,
+    minWidth: 0,
   },
   orderId: {
-    fontSize: 14,
     fontWeight: '600',
   },
   orderDate: {
-    fontSize: 12,
     marginTop: 2,
   },
   orderRight: {
@@ -515,11 +552,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   orderTotal: {
-    fontSize: 16,
     fontWeight: '700',
   },
   divider: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     marginVertical: 12,
     opacity: 0.5,
   },
@@ -542,34 +578,27 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   statusText: {
-    fontSize: 12,
     fontWeight: '600',
   },
   paymentMethod: {
-    fontSize: 12,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   emptyContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
   },
   emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 17,
     fontWeight: '600',
     marginBottom: 4,
   },
   emptySubtitle: {
-    fontSize: 13,
     textAlign: 'center',
   },
 });

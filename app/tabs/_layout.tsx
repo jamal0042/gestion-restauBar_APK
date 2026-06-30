@@ -45,6 +45,9 @@ export default function TabsLayout() {
           fontWeight: '500',
           marginTop: 4,
         },
+        // ✅ CORRECTION : Remplacement par tabBarPressColor pour l'effet ripple sur Android
+        // (Supprime cette ligne si tu n'en as pas besoin)
+        tabBarPressColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', 
       }}
     >
       <Tabs.Screen
@@ -68,6 +71,7 @@ export default function TabsLayout() {
         }}
       />
 
+      {/* Onglets conditionnels cachés via display: 'none' pour éviter les bugs de routing */}
       <Tabs.Screen
         name="users"
         options={{

@@ -35,6 +35,9 @@ export default function InvoiceScreen() {
     email: '',
     numero_fiscal: '',
   });
+  
+  // ✅ NOUVEAU STATE : Pour sauvegarder les items avant de vider le panier
+  const [savedItems, setSavedItems] = useState<any[]>([]);
 
   const method = (params.method as string) || 'cash';
   const total = Number(params.total) || getTotal();
@@ -55,6 +58,9 @@ export default function InvoiceScreen() {
           setLoading(false);
           return;
         }
+
+        // ✅ Sauvegarder les items AVANT de vider le panier
+        setSavedItems([...items]);
 
         const newOrderId = `ORD-${Date.now()}`;
         const order: Order = {
@@ -105,7 +111,7 @@ export default function InvoiceScreen() {
     total,
     method: methodLabels[method],
     cashier: user?.nom || 'N/A',
-    items: items.length > 0 ? items.map(i => ({
+    items: savedItems.length > 0 ? savedItems.map(i => ({
       name: i.product.nom,
       qty: i.quantite,
       price: i.product.prix * i.quantite
@@ -185,16 +191,14 @@ export default function InvoiceScreen() {
           </Text>
         </View>
 
-        {/* Items */}
-        {items.length === 0 && total > 0 ? (
-          <View style={styles.itemsSection}>
+        {/* ✅ Items : Utiliser savedItems au lieu de items */}
+        <View style={styles.itemsSection}>
+          {savedItems.length === 0 && total > 0 ? (
             <Text style={[styles.emptyItems, { color: theme.textSecondary }]}>
               Vente enregistrée
             </Text>
-          </View>
-        ) : (
-          <View style={styles.itemsSection}>
-            {items.map((item, index) => (
+          ) : (
+            savedItems.map((item, index) => (
               <View key={index} style={styles.itemRow}>
                 <View style={styles.itemLeft}>
                   <Text style={[styles.itemQty, { color: theme.textSecondary }]}>
@@ -208,9 +212,9 @@ export default function InvoiceScreen() {
                   {formatCurrency(item.product.prix * item.quantite)}
                 </Text>
               </View>
-            ))}
-          </View>
-        )}
+            ))
+          )}
+        </View>
 
         {/* Divider */}
         <View style={[styles.divider, { borderColor: theme.border }]}>

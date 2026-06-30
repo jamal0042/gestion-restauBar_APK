@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -36,8 +36,8 @@ export default function InvoiceScreen() {
     numero_fiscal: '',
   });
   
-  // ✅ NOUVEAU STATE : Pour sauvegarder les items avant de vider le panier
-  const [savedItems, setSavedItems] = useState<any[]>([]);
+  // ✅ useRef pour stocker les items - persiste entre les rendus
+  const savedItemsRef = useRef<any[]>([]);
 
   const method = (params.method as string) || 'cash';
   const total = Number(params.total) || getTotal();
@@ -59,8 +59,8 @@ export default function InvoiceScreen() {
           return;
         }
 
-        // ✅ Sauvegarder les items AVANT de vider le panier
-        setSavedItems([...items]);
+        // ✅ Sauvegarder les items dans le ref AVANT de vider le panier
+        savedItemsRef.current = [...items];
 
         const newOrderId = `ORD-${Date.now()}`;
         const order: Order = {
@@ -103,7 +103,7 @@ export default function InvoiceScreen() {
     }).format(amount);
   };
 
-  // Génère les données pour le QR code
+  // ✅ Utiliser savedItemsRef.current pour le QR code
   const qrData = JSON.stringify({
     orderId,
     establishment: settings.nom_etablissement,
@@ -111,12 +111,17 @@ export default function InvoiceScreen() {
     total,
     method: methodLabels[method],
     cashier: user?.nom || 'N/A',
-    items: savedItems.length > 0 ? savedItems.map(i => ({
+    items: savedItemsRef.current.length > 0 ? savedItemsRef.current.map(i => ({
       name: i.product.nom,
       qty: i.quantite,
       price: i.product.prix * i.quantite
     })) : []
   });
+
+  // Fonction pour gérer le clic sur "Nouvelle vente"
+  const handleNewSale = () => {
+    router.replace('/tabs');
+  };
 
   if (loading) {
     return (
@@ -191,14 +196,14 @@ export default function InvoiceScreen() {
           </Text>
         </View>
 
-        {/* ✅ Items : Utiliser savedItems au lieu de items */}
+        {/* ✅ Items : Utiliser savedItemsRef.current */}
         <View style={styles.itemsSection}>
-          {savedItems.length === 0 && total > 0 ? (
+          {savedItemsRef.current.length === 0 && total > 0 ? (
             <Text style={[styles.emptyItems, { color: theme.textSecondary }]}>
               Vente enregistrée
             </Text>
           ) : (
-            savedItems.map((item, index) => (
+            savedItemsRef.current.map((item, index) => (
               <View key={index} style={styles.itemRow}>
                 <View style={styles.itemLeft}>
                   <Text style={[styles.itemQty, { color: theme.textSecondary }]}>
@@ -258,7 +263,7 @@ export default function InvoiceScreen() {
       <View style={styles.actions}>
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: theme.primary }]}
-          onPress={() => router.replace('/tabs') as any}
+          onPress={handleNewSale}
           activeOpacity={0.8}
         >
           <CheckCircle size={20} color={theme.white} />

@@ -144,7 +144,7 @@ export default function InvoiceScreen() {
         {/* Divider */}
         <View style={[styles.divider, { borderColor: theme.border }]}>
           <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
-            {''.repeat(20)}
+           //{'*'.repeat(20)}
           </Text>
         </View>
 

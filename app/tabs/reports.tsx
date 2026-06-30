@@ -6,8 +6,10 @@ import {
   TouchableOpacity,
   useColorScheme,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
+  PixelRatio,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Calendar,
   TrendingUp,
@@ -18,14 +20,25 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { lightTheme, darkTheme } from '@/src/utils/theme';
-import { getDailySales, getTopProducts, getOrders } from '@/src/database/orders';
-import { getToday } from '@/src/utils/date';
+import { getDailySales, getTopProducts } from '@/src/database/orders';
 
-const { width } = Dimensions.get('window');
+// Helpers responsifs
+const scaleSize = (size: number, width: number) => {
+  const baseWidth = 375;
+  return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
+};
+
+const scaleFont = (size: number) => {
+  return PixelRatio.roundToNearestPixel(size * PixelRatio.getFontScale());
+};
 
 export default function ReportsScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  const isSmallScreen = screenWidth < 360;
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dailySales, setDailySales] = useState({ total: 0, count: 0 });
@@ -80,73 +93,115 @@ export default function ReportsScreen() {
 
   const maxSales = Math.max(...weekData.map(d => d.sales), 1);
 
+  // Taille dynamique du graphique selon l'écran
+  const chartHeight = scaleSize(120, screenWidth);
+  const barWidth = scaleSize(isSmallScreen ? 18 : 24, screenWidth);
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Rapports</Text>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={{ paddingTop: insets.top }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <View style={[styles.header, { paddingHorizontal: isSmallScreen ? 12 : 20 }]}>
+        <Text style={[styles.headerTitle, { color: theme.text, fontSize: scaleFont(24) }]}>Rapports</Text>
       </View>
 
       {/* Date Selector */}
-      <View style={[styles.dateBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateArrow}>
-          <ChevronLeft size={24} color={theme.text} />
+      <View style={[styles.dateBar, { 
+        backgroundColor: theme.card, 
+        borderColor: theme.border,
+        marginHorizontal: isSmallScreen ? 12 : 16,
+        padding: scaleSize(12, screenWidth),
+      }]}>
+        <TouchableOpacity 
+          onPress={() => changeDate(-1)} 
+          style={styles.dateArrow}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <ChevronLeft size={scaleSize(22, screenWidth)} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.dateCenter}>
-          <Calendar size={18} color={theme.primary} />
-          <Text style={[styles.dateText, { color: theme.text }]}>
+          <Calendar size={scaleSize(16, screenWidth)} color={theme.primary} />
+          <Text style={[styles.dateText, { color: theme.text, fontSize: scaleFont(14) }]} numberOfLines={1}>
             {selectedDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => changeDate(1)} style={styles.dateArrow}>
-          <ChevronRight size={24} color={theme.text} />
+        <TouchableOpacity 
+          onPress={() => changeDate(1)} 
+          style={styles.dateArrow}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <ChevronRight size={scaleSize(22, screenWidth)} color={theme.text} />
         </TouchableOpacity>
       </View>
 
       {/* Daily Stats */}
-      <View style={styles.statsGrid}>
-        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={[styles.statIcon, { backgroundColor: theme.primary + '15' }]}>
-            <DollarSign size={20} color={theme.primary} />
+      <View style={[styles.statsGrid, { paddingHorizontal: isSmallScreen ? 12 : 16, gap: isSmallScreen ? 8 : 12 }]}>
+        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border, padding: scaleSize(14, screenWidth) }]}>
+          <View style={[styles.statIcon, { 
+            backgroundColor: theme.primary + '15',
+            width: scaleSize(36, screenWidth),
+            height: scaleSize(36, screenWidth),
+            borderRadius: scaleSize(9, screenWidth),
+            marginBottom: scaleSize(10, screenWidth),
+          }]}>
+            <DollarSign size={scaleSize(18, screenWidth)} color={theme.primary} />
           </View>
-          <Text style={[styles.statValue, { color: theme.text }]}>
+          <Text style={[styles.statValue, { color: theme.text, fontSize: scaleFont(17) }]} numberOfLines={1} adjustsFontSizeToFit>
             {formatCurrency(dailySales.total)}
           </Text>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>CA du jour</Text>
+          <Text style={[styles.statLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>CA du jour</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={[styles.statIcon, { backgroundColor: theme.success + '15' }]}>
-            <ShoppingBag size={20} color={theme.success} />
+        <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border, padding: scaleSize(14, screenWidth) }]}>
+          <View style={[styles.statIcon, { 
+            backgroundColor: theme.success + '15',
+            width: scaleSize(36, screenWidth),
+            height: scaleSize(36, screenWidth),
+            borderRadius: scaleSize(9, screenWidth),
+            marginBottom: scaleSize(10, screenWidth),
+          }]}>
+            <ShoppingBag size={scaleSize(18, screenWidth)} color={theme.success} />
           </View>
-          <Text style={[styles.statValue, { color: theme.text }]}>
+          <Text style={[styles.statValue, { color: theme.text, fontSize: scaleFont(17) }]}>
             {dailySales.count}
           </Text>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Ventes</Text>
+          <Text style={[styles.statLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>Ventes</Text>
         </View>
       </View>
 
       {/* Weekly Chart */}
-      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>7 derniers jours</Text>
-        <View style={styles.chartContainer}>
+      <View style={[styles.section, { 
+        backgroundColor: theme.card, 
+        borderColor: theme.border,
+        marginHorizontal: isSmallScreen ? 12 : 16,
+        padding: scaleSize(14, screenWidth),
+      }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text, fontSize: scaleFont(15) }]}>7 derniers jours</Text>
+        <View style={[styles.chartContainer, { height: chartHeight + scaleSize(40, screenWidth) }]}>
           {weekData.map((day, index) => {
-            const height = (day.sales / maxSales) * 120;
+            const height = (day.sales / maxSales) * chartHeight;
+            const isToday = day.sales === dailySales.total && dailySales.total > 0;
             return (
               <View key={index} style={styles.chartBarWrapper}>
-                <View style={styles.chartBarContainer}>
+                <Text style={[styles.chartValue, { color: theme.text, fontSize: scaleFont(9) }]}>
+                  {day.sales > 0 ? (day.sales / 1000).toFixed(0) + 'k' : '0'}
+                </Text>
+                <View style={[styles.chartBarContainer, { height: chartHeight }]}>
                   <View
                     style={[
                       styles.chartBar,
                       {
-                        height: Math.max(height, 4),
-                        backgroundColor: day.sales === dailySales.total ? theme.primary : theme.primary + '50',
+                        height: Math.max(height, scaleSize(4, screenWidth)),
+                        width: barWidth,
+                        backgroundColor: isToday ? theme.primary : theme.primary + '50',
+                        borderRadius: scaleSize(4, screenWidth),
                       },
                     ]}
                   />
                 </View>
-                <Text style={[styles.chartDay, { color: theme.textSecondary }]}>{day.day}</Text>
-                <Text style={[styles.chartValue, { color: theme.text }]}>
-                  {day.sales > 0 ? (day.sales / 1000).toFixed(0) + 'k' : '0'}
-                </Text>
+                <Text style={[styles.chartDay, { color: theme.textSecondary, fontSize: scaleFont(10) }]}>{day.day}</Text>
               </View>
             );
           })}
@@ -154,20 +209,27 @@ export default function ReportsScreen() {
       </View>
 
       {/* Top Products */}
-      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Produits les plus vendus</Text>
+      <View style={[styles.section, { 
+        backgroundColor: theme.card, 
+        borderColor: theme.border,
+        marginHorizontal: isSmallScreen ? 12 : 16,
+        padding: scaleSize(14, screenWidth),
+      }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text, fontSize: scaleFont(15) }]}>Produits les plus vendus</Text>
         {topProducts.length === 0 ? (
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Aucune vente ce jour</Text>
+          <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: scaleFont(13) }]}>Aucune vente ce jour</Text>
         ) : (
           topProducts.map((product, index) => (
-            <View key={index} style={[styles.productRow, { borderBottomColor: theme.border }]}>
+            <View key={index} style={[styles.productRow, { borderBottomColor: theme.border, paddingVertical: scaleSize(10, screenWidth) }]}>
               <View style={styles.productInfo}>
-                <Text style={[styles.rank, { color: theme.primary }]}>#{index + 1}</Text>
-                <Text style={[styles.productName, { color: theme.text }]}>{product.nom}</Text>
+                <Text style={[styles.rank, { color: theme.primary, fontSize: scaleFont(13), width: scaleSize(26, screenWidth) }]}>#{index + 1}</Text>
+                <Text style={[styles.productName, { color: theme.text, fontSize: scaleFont(13) }]} numberOfLines={1}>
+                  {product.nom}
+                </Text>
               </View>
               <View style={styles.productStats}>
-                <Text style={[styles.productQty, { color: theme.textSecondary }]}>{product.quantite} vendu(s)</Text>
-                <Text style={[styles.productTotal, { color: theme.primary }]}>{formatCurrency(product.total)}</Text>
+                <Text style={[styles.productQty, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>{product.quantite} vendu(s)</Text>
+                <Text style={[styles.productTotal, { color: theme.primary, fontSize: scaleFont(13) }]}>{formatCurrency(product.total)}</Text>
               </View>
             </View>
           ))
@@ -175,18 +237,22 @@ export default function ReportsScreen() {
       </View>
 
       {/* Actions */}
-      <View style={styles.actions}>
+      <View style={[styles.actions, { paddingHorizontal: isSmallScreen ? 12 : 16 }]}>
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: theme.card, borderColor: theme.border }]
-            }
+          style={[styles.actionBtn, { 
+            backgroundColor: theme.card, 
+            borderColor: theme.border,
+            height: scaleSize(48, screenWidth),
+          }]}
           activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
-          <Download size={20} color={theme.text} />
-          <Text style={[styles.actionBtnText, { color: theme.text }]}>Exporter PDF</Text>
+          <Download size={scaleSize(18, screenWidth)} color={theme.text} />
+          <Text style={[styles.actionBtnText, { color: theme.text, fontSize: scaleFont(14) }]}>Exporter PDF</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.bottomPadding} />
+      <View style={{ height: insets.bottom + scaleSize(32, screenWidth) }} />
     </ScrollView>
   );
 }
@@ -196,20 +262,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 20,
-    paddingTop: 24,
+    paddingVertical: 16,
   },
   headerTitle: {
-    fontSize: 28,
     fontWeight: '700',
   },
   dateBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginHorizontal: 16,
     marginBottom: 16,
-    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -220,49 +282,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    justifyContent: 'center',
   },
   dateText: {
-    fontSize: 16,
     fontWeight: '600',
   },
   statsGrid: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
     marginBottom: 16,
   },
   statCard: {
     flex: 1,
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
   },
   statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
   statValue: {
-    fontSize: 20,
     fontWeight: '700',
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
   },
   section: {
-    margin: 16,
-    marginTop: 0,
     borderRadius: 12,
-    padding: 16,
     borderWidth: 1,
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 16,
     fontWeight: '700',
     marginBottom: 16,
   },
@@ -270,84 +321,71 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    height: 160,
-    paddingBottom: 8,
   },
   chartBarWrapper: {
     flex: 1,
     alignItems: 'center',
   },
   chartBarContainer: {
-    height: 120,
     justifyContent: 'flex-end',
     width: '100%',
     alignItems: 'center',
   },
   chartBar: {
-    width: 24,
-    borderRadius: 4,
+    // width et borderRadius dynamiques via inline style
   },
   chartDay: {
-    fontSize: 11,
     marginTop: 6,
   },
   chartValue: {
-    fontSize: 10,
-    marginTop: 2,
+    marginBottom: 4,
   },
   productRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   productInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    minWidth: 0, // Permet le truncation
   },
   rank: {
-    fontSize: 14,
     fontWeight: '700',
-    width: 28,
   },
   productName: {
-    fontSize: 14,
     fontWeight: '500',
+    flexShrink: 1,
   },
   productStats: {
     alignItems: 'flex-end',
+    marginLeft: 8,
   },
   productQty: {
-    fontSize: 12,
+    marginBottom: 2,
   },
   productTotal: {
-    fontSize: 14,
     fontWeight: '700',
   },
   emptyText: {
-    fontSize: 14,
     textAlign: 'center',
     paddingVertical: 16,
   },
   actions: {
-    padding: 16,
+    paddingBottom: 8,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 48,
     borderRadius: 12,
     borderWidth: 1,
   },
   actionBtnText: {
-    fontSize: 15,
     fontWeight: '600',
-  },
-  bottomPadding: {
-    height: 32,
   },
 });

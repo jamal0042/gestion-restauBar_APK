@@ -51,10 +51,14 @@ export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
   const { user, logout } = useAuthStore();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
   const isSmallScreen = screenWidth < 360;
+  const horizontalPadding = isSmallScreen ? 12 : 16;
+
+  // ✅ Extraction pour éviter le faux positif du linter sur 'dark'
+  const isDarkMode = colorScheme === 'dark';
 
   const [settings, setSettings] = useState<SettingsType>({
     nom_etablissement: 'DESKA HôTEL',
@@ -115,7 +119,6 @@ export default function SettingsScreen() {
   // Tailles dynamiques
   const avatarSize = scaleSize(48, screenWidth);
   const iconBoxSize = scaleSize(36, screenWidth);
-  const horizontalPadding = isSmallScreen ? 12 : 16;
 
   return (
     <KeyboardAvoidingView
@@ -133,13 +136,13 @@ export default function SettingsScreen() {
         </View>
 
         {/* Profile Card */}
-        <View style={[styles.profileCard, { 
-          backgroundColor: theme.card, 
+        <View style={[styles.profileCard, {
+          backgroundColor: theme.card,
           borderColor: theme.border,
           marginHorizontal: horizontalPadding,
           padding: scaleSize(14, screenWidth),
         }]}>
-          <View style={[styles.avatar, { 
+          <View style={[styles.avatar, {
             backgroundColor: theme.primary,
             width: avatarSize,
             height: avatarSize,
@@ -171,8 +174,8 @@ export default function SettingsScreen() {
         </View>
 
         {/* Business Settings */}
-        <View style={[styles.section, { 
-          backgroundColor: theme.card, 
+        <View style={[styles.section, {
+          backgroundColor: theme.card,
           borderColor: theme.border,
           marginHorizontal: horizontalPadding,
           padding: scaleSize(14, screenWidth),
@@ -279,8 +282,8 @@ export default function SettingsScreen() {
         </View>
 
         {/* Appearance */}
-        <View style={[styles.section, { 
-          backgroundColor: theme.card, 
+        <View style={[styles.section, {
+          backgroundColor: theme.card,
           borderColor: theme.border,
           marginHorizontal: horizontalPadding,
           padding: scaleSize(14, screenWidth),
@@ -288,24 +291,24 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: theme.text, fontSize: scaleFont(14) }]}>Apparence</Text>
           <View style={styles.themeRow}>
             <View style={styles.themeLeft}>
-              <View style={[styles.themeIcon, { 
+              <View style={[styles.themeIcon, {
                 backgroundColor: theme.primary + '15',
                 width: iconBoxSize,
                 height: iconBoxSize,
                 borderRadius: scaleSize(10, screenWidth),
               }]}>
-                {colorScheme === 'dark' ? (
+                {isDarkMode ? (
                   <Moon size={scaleSize(18, screenWidth)} color={theme.primary} />
                 ) : (
                   <Sun size={scaleSize(18, screenWidth)} color={theme.primary} />
                 )}
               </View>
               <Text style={[styles.themeLabel, { color: theme.text, fontSize: scaleFont(14) }]}>
-                Mode {colorScheme === 'dark' ? 'sombre' : 'clair'}
+                Mode {isDarkMode ? 'sombre' : 'clair'}
               </Text>
             </View>
             <Switch
-              value={colorScheme === 'dark'}
+              value={isDarkMode}
               onValueChange={() => {}}
               trackColor={{ false: theme.border, true: theme.primary }}
               thumbColor={theme.white}
@@ -315,7 +318,7 @@ export default function SettingsScreen() {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, { 
+          style={[styles.saveButton, {
             backgroundColor: saved ? theme.success : theme.primary,
             marginHorizontal: horizontalPadding,
             height: scaleSize(52, screenWidth),
@@ -332,8 +335,8 @@ export default function SettingsScreen() {
 
         {/* Logout */}
         <TouchableOpacity
-          style={[styles.logoutButton, { 
-            backgroundColor: theme.error + '10', 
+          style={[styles.logoutButton, {
+            backgroundColor: theme.error + '10',
             borderColor: theme.error + '30',
             marginHorizontal: horizontalPadding,
             height: scaleSize(52, screenWidth),
@@ -376,7 +379,7 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     flex: 1,
-    minWidth: 0, // Permet le truncation du nom
+    minWidth: 0,
   },
   profileName: {
     fontWeight: '700',

@@ -32,6 +32,15 @@ import { getProducts } from '@/src/database';
 import { Product, CartItem } from '@/src/types';
 import { useCartStore } from '@/src/store/cartStore';
 
+// ✅ Constantes extraites pour éviter les faux positifs du linter
+const CATEGORIES = ['all', 'Plats', 'Boissons', 'Cocktails', 'Desserts'] as const;
+
+const PAYMENT_METHODS = [
+  { method: 'cash', label: 'Espèces', icon: Banknote, colorKey: 'success' },
+  { method: 'card', label: 'Carte', icon: CreditCard, colorKey: 'primary' },
+  { method: 'mobile_money', label: 'Mobile Money', icon: Smartphone, colorKey: 'warning' },
+] as const;
+
 // Helpers responsifs
 const scaleSize = (size: number, width: number) => {
   const baseWidth = 375;
@@ -48,7 +57,7 @@ export default function CashierDashboard() {
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { items, addItem, removeItem, updateQuantity, getTotal, clearCart } = useCartStore();
+  const { items, addItem, removeItem, updateQuantity, getTotal } = useCartStore();
 
   const isSmallScreen = screenWidth < 360;
   const horizontalPadding = isSmallScreen ? 12 : 16;
@@ -59,8 +68,6 @@ export default function CashierDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showCart, setShowCart] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
-
-  const categories = ['all', 'Plats', 'Boissons', 'Cocktails', 'Desserts'];
 
   // Calcul dynamique de la largeur des cartes produit (2 colonnes)
   const productCardWidth = (screenWidth - (horizontalPadding * 2) - 12) / 2;
@@ -241,34 +248,38 @@ export default function CashierDashboard() {
       <View style={styles.categoriesContainer}>
         <FlatList
           horizontal
-          data={categories}
+          data={CATEGORIES}
           keyExtractor={(item) => item}
           showsHorizontalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.categoryChip,
-                {
-                  backgroundColor: selectedCategory === item ? theme.primary : theme.surface,
-                  borderColor: selectedCategory === item ? theme.primary : theme.border,
-                  paddingHorizontal: isSmallScreen ? 12 : 16,
-                  paddingVertical: scaleSize(8, screenWidth),
-                },
-              ]}
-              onPress={() => setSelectedCategory(item)}
-              activeOpacity={0.8}
-              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-            >
-              <Text
+          renderItem={({ item }) => {
+            const isActive = selectedCategory === item;
+            const displayLabel = item === 'all' ? 'Tous' : item;
+            return (
+              <TouchableOpacity
                 style={[
-                  styles.categoryText,
-                  { color: selectedCategory === item ? theme.white : theme.textSecondary, fontSize: scaleFont(12) },
+                  styles.categoryChip,
+                  {
+                    backgroundColor: isActive ? theme.primary : theme.surface,
+                    borderColor: isActive ? theme.primary : theme.border,
+                    paddingHorizontal: isSmallScreen ? 12 : 16,
+                    paddingVertical: scaleSize(8, screenWidth),
+                  },
                 ]}
+                onPress={() => setSelectedCategory(item)}
+                activeOpacity={0.8}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
               >
-                {item === 'all' ? 'Tous' : item}
-              </Text>
-            </TouchableOpacity>
-          )}
+                <Text
+                  style={[
+                    styles.categoryText,
+                    { color: isActive ? theme.white : theme.textSecondary, fontSize: scaleFont(12) },
+                  ]}
+                >
+                  {displayLabel}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
           contentContainerStyle={[styles.categoriesList, { paddingHorizontal: horizontalPadding }]}
         />
       </View>
@@ -385,35 +396,35 @@ export default function CashierDashboard() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={[styles.paymentMethods, { gap: isSmallScreen ? 10 : 12 }]}>
-                {[
-                  { method: 'cash', label: 'Espèces', icon: Banknote, color: theme.success },
-                  { method: 'card', label: 'Carte', icon: CreditCard, color: theme.primary },
-                  { method: 'mobile_money', label: 'Mobile Money', icon: Smartphone, color: theme.warning },
-                ].map((pm) => (
-                  <TouchableOpacity
-                    key={pm.method}
-                    style={[styles.paymentMethod, {
-                      backgroundColor: theme.card,
-                      borderColor: theme.border,
-                      padding: scaleSize(14, screenWidth),
-                      gap: scaleSize(14, screenWidth),
-                    }]}
-                    onPress={() => {
-                      setShowPayment(false);
-                      router.push({
-                        pathname: '/tabs/invoice',
-                        params: { method: pm.method, total: getTotal() },
-                      } as any);
-                    }}
-                    activeOpacity={0.8}
-                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                  >
-                    <pm.icon size={scaleSize(26, screenWidth)} color={pm.color} />
-                    <Text style={[styles.paymentMethodText, { color: theme.text, fontSize: scaleFont(15) }]}>
-                      {pm.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {PAYMENT_METHODS.map((pm) => {
+                  const IconComponent = pm.icon;
+                  const iconColor = theme[pm.colorKey];
+                  return (
+                    <TouchableOpacity
+                      key={pm.method}
+                      style={[styles.paymentMethod, {
+                        backgroundColor: theme.card,
+                        borderColor: theme.border,
+                        padding: scaleSize(14, screenWidth),
+                        gap: scaleSize(14, screenWidth),
+                      }]}
+                      onPress={() => {
+                        setShowPayment(false);
+                        router.push({
+                          pathname: '/tabs/invoice',
+                          params: { method: pm.method, total: getTotal() },
+                        } as any);
+                      }}
+                      activeOpacity={0.8}
+                      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                    >
+                      <IconComponent size={scaleSize(26, screenWidth)} color={iconColor} />
+                      <Text style={[styles.paymentMethodText, { color: theme.text, fontSize: scaleFont(15) }]}>
+                        {pm.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </ScrollView>
           </View>

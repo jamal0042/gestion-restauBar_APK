@@ -23,20 +23,21 @@ export default function TabsLayout() {
           borderTopWidth: 1,
           
           // --- CONFIGURATION DYNAMIQUE ET FLEXIBLE ---
+          // Le height s'adapte automatiquement : base de 60px + la zone sécurisée du bas de l'appareil
           height: 60 + insets.bottom, 
           paddingTop: 8,
+          // Si l'appareil n'a pas de zone sécurisée en bas (ex: vieux Android), on met 8px par défaut
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8, 
         },
         tabBarActiveTintColor: '#C2185B',
         tabBarInactiveTintColor: isDark ? '#9E9E9E' : '#757575',
         tabBarLabelStyle: {
-          fontSize: 11, 
+          fontSize: 11, // Légèrement réduit pour éviter que le texte ne se cache sur les petits écrans
           fontWeight: '500',
           marginTop: 2,
         },
       }}
     >
-      {/* 1. INDEX (Dashboard ou Ventes selon le rôle) */}
       <Tabs.Screen
         name="index"
         options={{
@@ -46,8 +47,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
-      {/* 2. PRODUITS */}
       <Tabs.Screen
         name="products"
         options={{
@@ -55,48 +54,33 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Package size={size} color={color} />,
         }}
       />
-
-      {/* 3. UTILISATEURS (Masqué totalement si Cashier) */}
-      <Tabs.Screen
-        name="users"
-        options={{
-          title: 'Utilisateurs',
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
-          tabBarButton: isAdmin ? undefined : () => null,
-        }}
-      />
-
-      {/* 4. RAPPORTS (Masqué totalement si Cashier) */}
-      <Tabs.Screen
-        name="reports"
-        options={{
-          title: 'Rapports',
-          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          tabBarButton: isAdmin ? undefined : () => null,
-        }}
-      />
-
-      {/* 5. HISTORIQUE (Masqué totalement si Admin) */}
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'Historique',
-          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          tabBarButton: !isAdmin ? undefined : () => null,
-        }}
-      />
-
-      {/* 6. INVOICE / FACTURES (Masqué par défaut si non exploité directement dans les onglets) */}
-      <Tabs.Screen
-        name="invoice"
-        options={{
-          title: 'Factures',
-          tabBarIcon: ({ color, size }) => <Receipt size={size} color={color} />,
-          tabBarButton: () => null,
-        }}
-      />
-
-      {/* 7. PARAMÈTRES */}
+      {isAdmin && (
+        <Tabs.Screen
+          name="users"
+          options={{
+            title: 'Utilisateurs',
+            tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          }}
+        />
+      )}
+      {isAdmin && (
+        <Tabs.Screen
+          name="reports"
+          options={{
+            title: 'Rapports',
+            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+          }}
+        />
+      )}
+      {!isAdmin && (
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: 'Historique',
+            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+          }}
+        />
+      )}
       <Tabs.Screen
         name="settings"
         options={{

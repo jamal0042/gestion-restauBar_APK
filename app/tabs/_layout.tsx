@@ -11,7 +11,6 @@ import {
   Receipt,
 } from 'lucide-react-native';
 
-// ✅ Helpers responsifs identiques au reste de l'app
 const scaleSize = (size: number, width: number) => {
   const baseWidth = 375;
   return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
@@ -31,7 +30,6 @@ export default function TabsLayout() {
   const isAdmin = user?.role === 'admin';
   const isSmallScreen = screenWidth < 360;
 
-  // Couleurs centralisées
   const colors = {
     tabBarBg: isDark ? '#212121' : '#FFFFFF',
     borderTop: isDark ? '#424242' : '#E0E0E0',
@@ -39,14 +37,16 @@ export default function TabsLayout() {
     inactiveTint: isDark ? '#9E9E9E' : '#757575',
   };
 
-  // ✅ Hauteur dynamique adaptée à l'écran + safe area
-  const tabBarHeight = Platform.OS === 'ios'
+  // ✅ Hauteur FIXE calculée une seule fois pour éviter le saut
+  const tabBarBaseHeight = Platform.OS === 'ios'
     ? scaleSize(88, screenWidth)
     : scaleSize(isSmallScreen ? 64 : 72, screenWidth);
 
-  const paddingBottom = Platform.OS === 'ios'
+  const safeBottom = Platform.OS === 'ios'
     ? Math.max(insets.bottom, scaleSize(28, screenWidth))
     : Math.max(insets.bottom, scaleSize(12, screenWidth));
+
+  const totalTabBarHeight = tabBarBaseHeight + safeBottom;
 
   return (
     <Tabs
@@ -56,9 +56,10 @@ export default function TabsLayout() {
           backgroundColor: colors.tabBarBg,
           borderTopColor: colors.borderTop,
           borderTopWidth: 1,
-          height: tabBarHeight + insets.bottom,
+          // ✅ Hauteur TOTALE fixe pour éviter le recalcul quand un onglet se cache
+          height: totalTabBarHeight,
           paddingTop: scaleSize(10, screenWidth),
-          paddingBottom: paddingBottom,
+          paddingBottom: safeBottom,
         },
         tabBarActiveTintColor: colors.activeTint,
         tabBarInactiveTintColor: colors.inactiveTint,
@@ -93,8 +94,7 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* ✅ CORRECTION MAJEURE : Ne jamais conditionner Tabs.Screen dans le JSX avec expo-router */}
-      {/* Utilise display: 'none' + href: null pour cacher proprement */}
+      {/* ✅ CORRECTION : tabBarItemStyle au lieu de tabBarStyle pour masquer */}
       <Tabs.Screen
         name="users"
         options={{
@@ -102,7 +102,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Users size={scaleSize(size, screenWidth)} color={color} />
           ),
-          tabBarStyle: { display: isAdmin ? 'flex' : 'none' },
+          tabBarItemStyle: { display: isAdmin ? 'flex' : 'none' },
           href: isAdmin ? undefined : null,
         }}
       />
@@ -114,7 +114,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <BarChart3 size={scaleSize(size, screenWidth)} color={color} />
           ),
-          tabBarStyle: { display: isAdmin ? 'flex' : 'none' },
+          tabBarItemStyle: { display: isAdmin ? 'flex' : 'none' },
           href: isAdmin ? undefined : null,
         }}
       />
@@ -126,7 +126,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <BarChart3 size={scaleSize(size, screenWidth)} color={color} />
           ),
-          tabBarStyle: { display: !isAdmin ? 'flex' : 'none' },
+          tabBarItemStyle: { display: !isAdmin ? 'flex' : 'none' },
           href: !isAdmin ? undefined : null,
         }}
       />

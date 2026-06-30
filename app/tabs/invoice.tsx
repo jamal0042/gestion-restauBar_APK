@@ -241,9 +241,6 @@ export default function InvoiceScreen() {
               size={120}
               color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'}
               backgroundColor="transparent"
-              logoSize={30}
-              logoMargin={2}
-              logoBorderRadius={4}
             />
           </View>
           
@@ -426,3 +423,26 @@ const styles = StyleSheet.create({
   },
   qrLabel: {
     fontSize: 11,
+    fontStyle: 'italic',
+  },
+  actions: {
+    padding: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  actionButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  bottomPadding: {
+    height: 32,
+  },
+});

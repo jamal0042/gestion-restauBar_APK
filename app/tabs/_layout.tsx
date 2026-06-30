@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
-import { useColorScheme, Platform } from 'react-native';
+import { useColorScheme, Platform } from 'react-native'; // Ajout de Platform
 import { useAuthStore } from '@/src/store/authStore';
-import { LayoutDashboard, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
+import { LayoutDashboard, ShoppingCart, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
 
 export default function TabsLayout() {
   const { user } = useAuthStore();
@@ -18,21 +18,21 @@ export default function TabsLayout() {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
-          // Configuration de hauteur adaptative pour éviter les chevauchements
-          height: Platform.OS === 'ios' ? 88 : 72,
-          paddingTop: 12,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+          
+          // --- CONFIGURATION CORRIGÉE POUR LE BAS DE L'ÉCRAN ---
+          height: Platform.OS === 'ios' ? 88 : 72, // Plus haut pour s'adapter aux écrans modernes
+          paddingTop: 12, // Donne de l'espace au-dessus de l'icône
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12, // Remonte le texte sur iOS (barre d'accueil) et Android
         },
         tabBarActiveTintColor: '#C2185B',
         tabBarInactiveTintColor: isDark ? '#9E9E9E' : '#757575',
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
-          marginTop: 4,
+          marginTop: 4, // Un petit espace entre l'icône et le texte pour l'esthétique
         },
       }}
     >
-      {/* 1. Écran d'accueil dynamique (Dashboard pour Admin, Ventes pour Serveur/User) */}
       <Tabs.Screen
         name="index"
         options={{
@@ -42,8 +42,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-
-      {/* 2. Écran Produits - Commun à tout le monde */}
       <Tabs.Screen
         name="products"
         options={{
@@ -51,38 +49,33 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Package size={size} color={color} />,
         }}
       />
-
-      {/* 3. Écran Utilisateurs - Visible uniquement par l'Admin */}
-      <Tabs.Screen
-        name="users"
-        options={{
-          title: 'Utilisateurs',
-          href: isAdmin ? 'users' : undefined,
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
-        }}
-      />
-
-      {/* 4. Écran Rapports - Visible uniquement par l'Admin */}
-      <Tabs.Screen
-        name="reports"
-        options={{
-          title: 'Rapports',
-          href: isAdmin ? 'reports' : undefined,
-          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-        }}
-      />
-
-      {/* 5. Écran Historique - Visible uniquement par les non-Admins */}
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'Historique',
-          href: !isAdmin ? 'history' : undefined,
-          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-        }}
-      />
-
-      {/* 6. Écran Paramètres - Commun à tout le monde */}
+      {isAdmin && (
+        <Tabs.Screen
+          name="users"
+          options={{
+            title: 'Utilisateurs',
+            tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          }}
+        />
+      )}
+      {isAdmin && (
+        <Tabs.Screen
+          name="reports"
+          options={{
+            title: 'Rapports',
+            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+          }}
+        />
+      )}
+      {!isAdmin && (
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: 'Historique',
+            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+          }}
+        />
+      )}
       <Tabs.Screen
         name="settings"
         options={{

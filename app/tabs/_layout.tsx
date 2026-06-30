@@ -1,14 +1,14 @@
 import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import crucial pour la flexibilité
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/src/store/authStore';
-import { LayoutDashboard, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
+import { LayoutDashboard, Package, Users, BarChart3, Settings, Receipt, History } from 'lucide-react-native';
 
 export default function TabsLayout() {
   const { user } = useAuthStore();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const insets = useSafeAreaInsets(); // Récupère les zones sécurisées de l'écran (notch, home indicator)
+  const insets = useSafeAreaInsets();
 
   const isAdmin = user?.role === 'admin';
 
@@ -16,37 +16,36 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarPosition: 'bottom', // Force la position en bas
+        tabBarPosition: 'bottom',
         tabBarStyle: {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
-          
-          // --- CONFIGURATION DYNAMIQUE ET FLEXIBLE ---
-          // Le height s'adapte automatiquement : base de 60px + la zone sécurisée du bas de l'appareil
           height: 60 + insets.bottom, 
           paddingTop: 8,
-          // Si l'appareil n'a pas de zone sécurisée en bas (ex: vieux Android), on met 8px par défaut
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8, 
         },
         tabBarActiveTintColor: '#C2185B',
         tabBarInactiveTintColor: isDark ? '#9E9E9E' : '#757575',
         tabBarLabelStyle: {
-          fontSize: 11, // Légèrement réduit pour éviter que le texte ne se cache sur les petits écrans
+          fontSize: 11,
           fontWeight: '500',
           marginTop: 2,
         },
       }}
     >
+      {/* 1. L'index (Premier onglet) : Reste fixe mais adapte son contenu visuel selon le rôle */}
       <Tabs.Screen
         name="index"
         options={{
-          title: isAdmin ? 'Dashboard' : 'Ventes',
+          title: isAdmin ? 'Dashboard' : 'Vente',
           tabBarIcon: ({ color, size }) => (
             isAdmin ? <LayoutDashboard size={size} color={color} /> : <Receipt size={size} color={color} />
           ),
         }}
       />
+
+      {/* 2. Produits : Accessible par tout le monde (Admin et Caissier) */}
       <Tabs.Screen
         name="products"
         options={{
@@ -54,33 +53,38 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Package size={size} color={color} />,
         }}
       />
-      {isAdmin && (
-        <Tabs.Screen
-          name="users"
-          options={{
-            title: 'Utilisateurs',
-            tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
-          }}
-        />
-      )}
-      {isAdmin && (
-        <Tabs.Screen
-          name="reports"
-          options={{
-            title: 'Rapports',
-            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          }}
-        />
-      )}
-      {!isAdmin && (
-        <Tabs.Screen
-          name="history"
-          options={{
-            title: 'Historique',
-            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          }}
-        />
-      )}
+
+      {/* 3. Utilisateurs : Masqué pour le caissier via href: null */}
+      <Tabs.Screen
+        name="users"
+        options={{
+          title: 'Utilisateurs',
+          href: isAdmin ? '/users' : null, // C'est ici que la magie opère
+          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+        }}
+      />
+
+      {/* 4. Rapports : Uniquement pour l'Admin */}
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: 'Rapports',
+          href: isAdmin ? '/reports' : null,
+          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+        }}
+      />
+
+      {/* 5. Historique : Uniquement pour le Caissier (Masqué pour l'Admin) */}
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: 'Historique',
+          href: !isAdmin ? '/history' : null,
+          tabBarIcon: ({ color, size }) => <History size={size} color={color} />, // Utilisation de l'icône History pour plus de clarté
+        }}
+      />
+
+      {/* 6. Paramètres : Accessible par tout le monde */}
       <Tabs.Screen
         name="settings"
         options={{

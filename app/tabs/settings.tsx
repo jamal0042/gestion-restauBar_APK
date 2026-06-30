@@ -9,7 +9,12 @@ import {
   TextInput,
   Alert,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
+  PixelRatio,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   LogOut,
@@ -21,7 +26,6 @@ import {
   FileText,
   Moon,
   Sun,
-  ChevronRight,
   User,
   Wifi,
   WifiOff,
@@ -32,11 +36,25 @@ import { useAuthStore } from '@/src/store/authStore';
 import { checkConnection } from '@/src/api/client';
 import { Settings as SettingsType } from '@/src/types';
 
+// Helpers responsifs
+const scaleSize = (size: number, width: number) => {
+  const baseWidth = 375;
+  return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
+};
+
+const scaleFont = (size: number) => {
+  return PixelRatio.roundToNearestPixel(size * PixelRatio.getFontScale());
+};
+
 export default function SettingsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
   const { user, logout } = useAuthStore();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  const isSmallScreen = screenWidth < 360;
 
   const [settings, setSettings] = useState<SettingsType>({
     nom_etablissement: 'DESKA HôTEL',
@@ -94,183 +112,243 @@ export default function SettingsScreen() {
     );
   };
 
+  // Tailles dynamiques
+  const avatarSize = scaleSize(48, screenWidth);
+  const iconBoxSize = scaleSize(36, screenWidth);
+  const horizontalPadding = isSmallScreen ? 12 : 16;
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Paramètres</Text>
-      </View>
-
-      {/* Profile Card */}
-      <View style={[styles.profileCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-          <User size={28} color={theme.white} />
-        </View>
-        <View style={styles.profileInfo}>
-          <Text style={[styles.profileName, { color: theme.text }]}>{user?.nom || 'Utilisateur'}</Text>
-          <Text style={[styles.profileRole, { color: theme.textSecondary }]}>
-            {user?.role === 'admin' ? 'Administrateur' : 'Caissier'}
-          </Text>
-        </View>
-        <View style={styles.onlineStatus}>
-          {isOnline ? (
-            <View style={[styles.onlineBadge, { backgroundColor: theme.success + '15' }]}>
-              <Wifi size={14} color={theme.success} />
-              <Text style={[styles.onlineText, { color: theme.success }]}>En ligne</Text>
-            </View>
-          ) : (
-            <View style={[styles.onlineBadge, { backgroundColor: theme.warning + '15' }]}>
-              <WifiOff size={14} color={theme.warning} />
-              <Text style={[styles.onlineText, { color: theme.warning }]}>Hors ligne</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Business Settings */}
-      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Informations de l'établissement</Text>
-
-        <View style={styles.inputGroup}>
-          <View style={styles.inputIcon}>
-            <Store size={18} color={theme.textSecondary} />
-          </View>
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Nom</Text>
-            <TextInput
-              style={[styles.input, { color: theme.text }]}
-              value={settings.nom_etablissement}
-              onChangeText={(text) => setSettings({ ...settings, nom_etablissement: text })}
-              placeholder="Nom de l'établissement"
-              placeholderTextColor={theme.placeholder}
-            />
-          </View>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
+          <Text style={[styles.headerTitle, { color: theme.text, fontSize: scaleFont(24) }]}>Paramètres</Text>
         </View>
 
-        <View style={[styles.inputDivider, { backgroundColor: theme.border }]} />
-
-        <View style={styles.inputGroup}>
-          <View style={styles.inputIcon}>
-            <MapPin size={18} color={theme.textSecondary} />
+        {/* Profile Card */}
+        <View style={[styles.profileCard, { 
+          backgroundColor: theme.card, 
+          borderColor: theme.border,
+          marginHorizontal: horizontalPadding,
+          padding: scaleSize(14, screenWidth),
+        }]}>
+          <View style={[styles.avatar, { 
+            backgroundColor: theme.primary,
+            width: avatarSize,
+            height: avatarSize,
+            borderRadius: avatarSize / 2,
+          }]}>
+            <User size={scaleSize(24, screenWidth)} color={theme.white} />
           </View>
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Adresse</Text>
-            <TextInput
-              style={[styles.input, { color: theme.text }]}
-              value={settings.adresse}
-              onChangeText={(text) => setSettings({ ...settings, adresse: text })}
-              placeholder="Adresse"
-              placeholderTextColor={theme.placeholder}
-            />
-          </View>
-        </View>
-
-        <View style={[styles.inputDivider, { backgroundColor: theme.border }]} />
-
-        <View style={styles.inputGroup}>
-          <View style={styles.inputIcon}>
-            <Phone size={18} color={theme.textSecondary} />
-          </View>
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Téléphone</Text>
-            <TextInput
-              style={[styles.input, { color: theme.text }]}
-              value={settings.telephone}
-              onChangeText={(text) => setSettings({ ...settings, telephone: text })}
-              placeholder="Numéro de téléphone"
-              placeholderTextColor={theme.placeholder}
-              keyboardType="phone-pad"
-            />
-          </View>
-        </View>
-
-        <View style={[styles.inputDivider, { backgroundColor: theme.border }]} />
-
-        <View style={styles.inputGroup}>
-          <View style={styles.inputIcon}>
-            <Mail size={18} color={theme.textSecondary} />
-          </View>
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Email</Text>
-            <TextInput
-              style={[styles.input, { color: theme.text }]}
-              value={settings.email}
-              onChangeText={(text) => setSettings({ ...settings, email: text })}
-              placeholder="Email"
-              placeholderTextColor={theme.placeholder}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
-
-        <View style={[styles.inputDivider, { backgroundColor: theme.border }]} />
-
-        <View style={styles.inputGroup}>
-          <View style={styles.inputIcon}>
-            <FileText size={18} color={theme.textSecondary} />
-          </View>
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>N° Fiscal</Text>
-            <TextInput
-              style={[styles.input, { color: theme.text }]}
-              value={settings.numero_fiscal}
-              onChangeText={(text) => setSettings({ ...settings, numero_fiscal: text })}
-              placeholder="Numéro fiscal"
-              placeholderTextColor={theme.placeholder}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Appearance */}
-      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Apparence</Text>
-        <View style={styles.themeRow}>
-          <View style={styles.themeLeft}>
-            <View style={[styles.themeIcon, { backgroundColor: theme.primary + '15' }]}>
-              {colorScheme === 'dark' ? (
-                <Moon size={18} color={theme.primary} />
-              ) : (
-                <Sun size={18} color={theme.primary} />
-              )}
-            </View>
-            <Text style={[styles.themeLabel, { color: theme.text }]}>
-              Mode {colorScheme === 'dark' ? 'sombre' : 'clair'}
+          <View style={styles.profileInfo}>
+            <Text style={[styles.profileName, { color: theme.text, fontSize: scaleFont(15) }]} numberOfLines={1}>
+              {user?.nom || 'Utilisateur'}
+            </Text>
+            <Text style={[styles.profileRole, { color: theme.textSecondary, fontSize: scaleFont(12) }]}>
+              {user?.role === 'admin' ? 'Administrateur' : 'Caissier'}
             </Text>
           </View>
-          <Switch
-            value={colorScheme === 'dark'}
-            onValueChange={() => {}}
-            trackColor={{ false: theme.border, true: theme.primary }}
-            thumbColor={theme.white}
-          />
+          <View style={styles.onlineStatus}>
+            {isOnline ? (
+              <View style={[styles.onlineBadge, { backgroundColor: theme.success + '15' }]}>
+                <Wifi size={scaleSize(12, screenWidth)} color={theme.success} />
+                <Text style={[styles.onlineText, { color: theme.success, fontSize: scaleFont(10) }]}>En ligne</Text>
+              </View>
+            ) : (
+              <View style={[styles.onlineBadge, { backgroundColor: theme.warning + '15' }]}>
+                <WifiOff size={scaleSize(12, screenWidth)} color={theme.warning} />
+                <Text style={[styles.onlineText, { color: theme.warning, fontSize: scaleFont(10) }]}>Hors ligne</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
 
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[styles.saveButton, { backgroundColor: saved ? theme.success : theme.primary }]}
-        onPress={handleSave}
-        activeOpacity={0.8}
-      >
-        <Save size={20} color={theme.white} />
-        <Text style={[styles.saveButtonText, { color: theme.white }]}>
-          {saved ? 'Sauvegardé !' : 'Sauvegarder'}
-        </Text>
-      </TouchableOpacity>
+        {/* Business Settings */}
+        <View style={[styles.section, { 
+          backgroundColor: theme.card, 
+          borderColor: theme.border,
+          marginHorizontal: horizontalPadding,
+          padding: scaleSize(14, screenWidth),
+        }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text, fontSize: scaleFont(14) }]}>
+            Informations de l'établissement
+          </Text>
 
-      {/* Logout */}
-      <TouchableOpacity
-        style={[styles.logoutButton, { backgroundColor: theme.error + '10', borderColor: theme.error + '30' }]}
-        onPress={handleLogout}
-        activeOpacity={0.8}
-      >
-        <LogOut size={20} color={theme.error} />
-        <Text style={[styles.logoutText, { color: theme.error }]}>Se déconnecter</Text>
-      </TouchableOpacity>
+          {/* Nom */}
+          <View style={styles.inputGroup}>
+            <View style={[styles.inputIcon, { width: iconBoxSize }]}>
+              <Store size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
+            </View>
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>Nom</Text>
+              <TextInput
+                style={[styles.input, { color: theme.text, fontSize: scaleFont(15) }]}
+                value={settings.nom_etablissement}
+                onChangeText={(text) => setSettings({ ...settings, nom_etablissement: text })}
+                placeholder="Nom de l'établissement"
+                placeholderTextColor={theme.placeholder}
+              />
+            </View>
+          </View>
 
-      <View style={styles.bottomPadding} />
-    </ScrollView>
+          <View style={[styles.inputDivider, { backgroundColor: theme.border, marginLeft: iconBoxSize + 8 }]} />
+
+          {/* Adresse */}
+          <View style={styles.inputGroup}>
+            <View style={[styles.inputIcon, { width: iconBoxSize }]}>
+              <MapPin size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
+            </View>
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>Adresse</Text>
+              <TextInput
+                style={[styles.input, { color: theme.text, fontSize: scaleFont(15) }]}
+                value={settings.adresse}
+                onChangeText={(text) => setSettings({ ...settings, adresse: text })}
+                placeholder="Adresse"
+                placeholderTextColor={theme.placeholder}
+              />
+            </View>
+          </View>
+
+          <View style={[styles.inputDivider, { backgroundColor: theme.border, marginLeft: iconBoxSize + 8 }]} />
+
+          {/* Téléphone */}
+          <View style={styles.inputGroup}>
+            <View style={[styles.inputIcon, { width: iconBoxSize }]}>
+              <Phone size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
+            </View>
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>Téléphone</Text>
+              <TextInput
+                style={[styles.input, { color: theme.text, fontSize: scaleFont(15) }]}
+                value={settings.telephone}
+                onChangeText={(text) => setSettings({ ...settings, telephone: text })}
+                placeholder="Numéro de téléphone"
+                placeholderTextColor={theme.placeholder}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <View style={[styles.inputDivider, { backgroundColor: theme.border, marginLeft: iconBoxSize + 8 }]} />
+
+          {/* Email */}
+          <View style={styles.inputGroup}>
+            <View style={[styles.inputIcon, { width: iconBoxSize }]}>
+              <Mail size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
+            </View>
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>Email</Text>
+              <TextInput
+                style={[styles.input, { color: theme.text, fontSize: scaleFont(15) }]}
+                value={settings.email}
+                onChangeText={(text) => setSettings({ ...settings, email: text })}
+                placeholder="Email"
+                placeholderTextColor={theme.placeholder}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          <View style={[styles.inputDivider, { backgroundColor: theme.border, marginLeft: iconBoxSize + 8 }]} />
+
+          {/* N° Fiscal */}
+          <View style={styles.inputGroup}>
+            <View style={[styles.inputIcon, { width: iconBoxSize }]}>
+              <FileText size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
+            </View>
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>N° Fiscal</Text>
+              <TextInput
+                style={[styles.input, { color: theme.text, fontSize: scaleFont(15) }]}
+                value={settings.numero_fiscal}
+                onChangeText={(text) => setSettings({ ...settings, numero_fiscal: text })}
+                placeholder="Numéro fiscal"
+                placeholderTextColor={theme.placeholder}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Appearance */}
+        <View style={[styles.section, { 
+          backgroundColor: theme.card, 
+          borderColor: theme.border,
+          marginHorizontal: horizontalPadding,
+          padding: scaleSize(14, screenWidth),
+        }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text, fontSize: scaleFont(14) }]}>Apparence</Text>
+          <View style={styles.themeRow}>
+            <View style={styles.themeLeft}>
+              <View style={[styles.themeIcon, { 
+                backgroundColor: theme.primary + '15',
+                width: iconBoxSize,
+                height: iconBoxSize,
+                borderRadius: scaleSize(10, screenWidth),
+              }]}>
+                {colorScheme === 'dark' ? (
+                  <Moon size={scaleSize(18, screenWidth)} color={theme.primary} />
+                ) : (
+                  <Sun size={scaleSize(18, screenWidth)} color={theme.primary} />
+                )}
+              </View>
+              <Text style={[styles.themeLabel, { color: theme.text, fontSize: scaleFont(14) }]}>
+                Mode {colorScheme === 'dark' ? 'sombre' : 'clair'}
+              </Text>
+            </View>
+            <Switch
+              value={colorScheme === 'dark'}
+              onValueChange={() => {}}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={theme.white}
+            />
+          </View>
+        </View>
+
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[styles.saveButton, { 
+            backgroundColor: saved ? theme.success : theme.primary,
+            marginHorizontal: horizontalPadding,
+            height: scaleSize(52, screenWidth),
+          }]}
+          onPress={handleSave}
+          activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <Save size={scaleSize(20, screenWidth)} color={theme.white} />
+          <Text style={[styles.saveButtonText, { color: theme.white, fontSize: scaleFont(16) }]}>
+            {saved ? 'Sauvegardé !' : 'Sauvegarder'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Logout */}
+        <TouchableOpacity
+          style={[styles.logoutButton, { 
+            backgroundColor: theme.error + '10', 
+            borderColor: theme.error + '30',
+            marginHorizontal: horizontalPadding,
+            height: scaleSize(52, screenWidth),
+          }]}
+          onPress={handleLogout}
+          activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <LogOut size={scaleSize(20, screenWidth)} color={theme.error} />
+          <Text style={[styles.logoutText, { color: theme.error, fontSize: scaleFont(16) }]}>Se déconnecter</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: insets.bottom + scaleSize(32, screenWidth) }} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -279,40 +357,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 20,
-    paddingTop: 24,
+    paddingVertical: 16,
   },
   headerTitle: {
-    fontSize: 28,
     fontWeight: '700',
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
     marginBottom: 16,
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
+    gap: 12,
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileInfo: {
     flex: 1,
-    marginLeft: 14,
+    minWidth: 0, // Permet le truncation du nom
   },
   profileName: {
-    fontSize: 16,
     fontWeight: '700',
     marginBottom: 2,
   },
   profileRole: {
-    fontSize: 13,
+    fontSize: 12,
   },
   onlineStatus: {
     alignItems: 'flex-end',
@@ -326,47 +397,40 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   onlineText: {
-    fontSize: 11,
     fontWeight: '600',
   },
   section: {
-    marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
     borderWidth: 1,
-    padding: 16,
   },
   sectionTitle: {
-    fontSize: 14,
     fontWeight: '700',
     marginBottom: 16,
   },
   inputGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   inputIcon: {
-    width: 36,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   inputWrapper: {
     flex: 1,
     marginLeft: 8,
   },
   inputLabel: {
-    fontSize: 11,
     fontWeight: '500',
     marginBottom: 2,
   },
   input: {
-    fontSize: 15,
     fontWeight: '500',
     padding: 0,
   },
   inputDivider: {
-    height: 1,
-    marginLeft: 44,
+    height: StyleSheet.hairlineWidth,
   },
   themeRow: {
     flexDirection: 'row',
@@ -378,16 +442,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   themeIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   themeLabel: {
-    fontSize: 15,
     fontWeight: '500',
   },
   saveButton: {
@@ -395,13 +456,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 52,
     borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   saveButtonText: {
-    fontSize: 16,
     fontWeight: '700',
   },
   logoutButton: {
@@ -409,17 +467,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 52,
     borderRadius: 12,
-    marginHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
   },
   logoutText: {
-    fontSize: 16,
     fontWeight: '700',
-  },
-  bottomPadding: {
-    height: 32,
   },
 });

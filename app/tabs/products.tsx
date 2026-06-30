@@ -13,6 +13,7 @@ import {
   Platform,
   ScrollView,
   Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -27,6 +28,9 @@ import {
 import { lightTheme, darkTheme } from '@/src/utils/theme';
 import { getProducts, createProduct, updateProduct, deleteProduct, updateStock } from '@/src/database/products';
 import { Product, ProductCategory } from '@/src/types';
+
+// Extraction propre pour éviter l'erreur de rendu de chaîne brute dans le JSX
+const FORM_CATEGORIES: ProductCategory[] = ['Plats', 'Boissons', 'Cocktails', 'Desserts'];
 
 export default function ProductsScreen() {
   const router = useRouter();
@@ -319,108 +323,112 @@ export default function ProductsScreen() {
         transparent
         onRequestClose={closeForm}
       >
-        <KeyboardAvoidingView
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
           style={styles.keyboardAvoidContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-            <View style={[styles.modalPanel, { backgroundColor: theme.background }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>
-                  {editingProduct ? 'Modifier' : 'Nouveau produit'}
-                </Text>
-                <TouchableOpacity onPress={closeForm}>
-                  <X size={24} color={theme.text} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView 
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={styles.scrollForm}
-              >
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { color: theme.text }]}>Nom *</Text>
-                  <TextInput
-                    style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-                    placeholder="Nom du produit"
-                    placeholderTextColor={theme.placeholder}
-                    value={formName}
-                    onChangeText={setFormName}
-                  />
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+              <View style={[styles.modalPanel, { backgroundColor: theme.background }]}>
+                
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>
+                    {editingProduct ? 'Modifier' : 'Nouveau produit'}
+                  </Text>
+                  <TouchableOpacity onPress={closeForm}>
+                    <X size={24} color={theme.text} />
+                  </TouchableOpacity>
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { color: theme.text }]}>Catégorie</Text>
-                  <View style={styles.categorySelector}>
-                    {(['Plats', 'Boissons', 'Cocktails', 'Desserts'] as ProductCategory[]).map((cat) => (
-                      <TouchableOpacity
-                        key={cat}
-                        style={[
-                          styles.categoryOption,
-                          {
-                            backgroundColor: formCategory === cat ? theme.primary : theme.input,
-                            borderColor: formCategory === cat ? theme.primary : theme.border,
-                          },
-                        ]}
-                        onPress={() => setFormCategory(cat)}
-                      >
-                        <Text style={{ color: formCategory === cat ? theme.white : theme.text, fontSize: 13 }}>
-                          {cat}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.formRow}>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={[styles.formLabel, { color: theme.text }]}>Prix *</Text>
-                    <TextInput
-                      style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-                      placeholder="0"
-                      placeholderTextColor={theme.placeholder}
-                      value={formPrice}
-                      onChangeText={setFormPrice}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={[styles.formGroup, { flex: 1, marginLeft: 12 }]}>
-                    <Text style={[styles.formLabel, { color: theme.text }]}>Stock</Text>
-                    <TextInput
-                      style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-                      placeholder="0"
-                      placeholderTextColor={theme.placeholder}
-                      value={formStock}
-                      onChangeText={setFormStock}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.formGroup}>
-                  <View style={styles.checkboxRow}>
-                    <TouchableOpacity
-                      style={[styles.checkbox, { borderColor: theme.border, backgroundColor: formAvailable ? theme.primary : theme.input }]}
-                      onPress={() => setFormAvailable(!formAvailable)}
-                    >
-                      {formAvailable && <Text style={{ color: theme.white, fontSize: 12 }}>✓</Text>}
-                    </TouchableOpacity>
-                    <Text style={[styles.checkboxLabel, { color: theme.text }]}>Disponible</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                  onPress={handleSave}
-                  activeOpacity={0.8}
+                <ScrollView 
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.scrollForm}
                 >
-                  <Save size={20} color={theme.white} />
-                  <Text style={[styles.saveButtonText, { color: theme.white }]}>Sauvegarder</Text>
-                </TouchableOpacity>
-              </ScrollView>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: theme.text }]}>Nom *</Text>
+                    <TextInput
+                      style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                      placeholder="Nom du produit"
+                      placeholderTextColor={theme.placeholder}
+                      value={formName}
+                      onChangeText={setFormName}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: theme.text }]}>Catégorie</Text>
+                    <View style={styles.categorySelector}>
+                      {FORM_CATEGORIES.map((cat) => (
+                        <TouchableOpacity
+                          key={cat}
+                          style={[
+                            styles.categoryOption,
+                            {
+                              backgroundColor: formCategory === cat ? theme.primary : theme.input,
+                              borderColor: formCategory === cat ? theme.primary : theme.border,
+                            },
+                          ]}
+                          onPress={() => setFormCategory(cat)}
+                        >
+                          <Text style={{ color: formCategory === cat ? theme.white : theme.text, fontSize: 13 }}>
+                            {cat}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={styles.formRow}>
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={[styles.formLabel, { color: theme.text }]}>Prix *</Text>
+                      <TextInput
+                        style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                        placeholder="0"
+                        placeholderTextColor={theme.placeholder}
+                        value={formPrice}
+                        onChangeText={setFormPrice}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={[styles.formGroup, { flex: 1, marginLeft: 12 }]}>
+                      <Text style={[styles.formLabel, { color: theme.text }]}>Stock</Text>
+                      <TextInput
+                        style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                        placeholder="0"
+                        placeholderTextColor={theme.placeholder}
+                        value={formStock}
+                        onChangeText={setFormStock}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <View style={styles.checkboxRow}>
+                      <TouchableOpacity
+                        style={[styles.checkbox, { borderColor: theme.border, backgroundColor: formAvailable ? theme.primary : theme.input }]}
+                        onPress={() => setFormAvailable(!formAvailable)}
+                      >
+                        {formAvailable && <Text style={{ color: theme.white, fontSize: 12 }}>✓</Text>}
+                      </TouchableOpacity>
+                      <Text style={[styles.checkboxLabel, { color: theme.text }]}>Disponible</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                    onPress={handleSave}
+                    activeOpacity={0.8}
+                  >
+                    <Save size={20} color={theme.white} />
+                    <Text style={[styles.saveButtonText, { color: theme.white }]}>Sauvegarder</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+
+              </View>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -432,90 +440,92 @@ export default function ProductsScreen() {
         onRequestClose={() => setShowStockModal(false)}
       >
         <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
           style={styles.keyboardAvoidContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-            <View style={[styles.modalPanel, { backgroundColor: theme.background }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.text }]} numberOfLines={1}>
-                  Stock: {stockProduct?.nom}
-                </Text>
-                <TouchableOpacity onPress={() => setShowStockModal(false)}>
-                  <X size={24} color={theme.text} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView 
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={styles.scrollForm}
-              >
-                <View style={styles.stockCurrent}>
-                  <Text style={[styles.stockCurrentLabel, { color: theme.textSecondary }]}>
-                    Stock actuel
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+              <View style={[styles.modalPanel, { backgroundColor: theme.background }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: theme.text }]} numberOfLines={1}>
+                    Stock: {stockProduct?.nom}
                   </Text>
-                  <Text style={[styles.stockCurrentValue, { color: theme.text }]}>
-                    {stockProduct?.stock || 0}
-                  </Text>
+                  <TouchableOpacity onPress={() => setShowStockModal(false)}>
+                    <X size={24} color={theme.text} />
+                  </TouchableOpacity>
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { color: theme.text }]}>Type</Text>
-                  <View style={styles.typeSelector}>
-                    <TouchableOpacity
-                      style={[
-                        styles.typeOption,
-                        {
-                          backgroundColor: stockType === 'in' ? theme.success : theme.input,
-                          borderColor: stockType === 'in' ? theme.success : theme.border,
-                        },
-                      ]}
-                      onPress={() => setStockType('in')}
-                    >
-                      <Text style={{ color: stockType === 'in' ? theme.white : theme.text, fontWeight: '600' }}>
-                        Entrée
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.typeOption,
-                        {
-                          backgroundColor: stockType === 'out' ? theme.error : theme.input,
-                          borderColor: stockType === 'out' ? theme.error : theme.border,
-                        },
-                      ]}
-                      onPress={() => setStockType('out')}
-                    >
-                      <Text style={{ color: stockType === 'out' ? theme.white : theme.text, fontWeight: '600' }}>
-                        Sortie
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { color: theme.text }]}>Quantité</Text>
-                  <TextInput
-                    style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-                    placeholder="0"
-                    placeholderTextColor={theme.placeholder}
-                    value={stockQty}
-                    onChangeText={setStockQty}
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.saveButton, { backgroundColor: stockType === 'in' ? theme.success : theme.error }]}
-                  onPress={handleStockUpdate}
-                  activeOpacity={0.8}
+                <ScrollView 
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.scrollForm}
                 >
-                  <Text style={[styles.saveButtonText, { color: theme.white }]}>Valider</Text>
-                </TouchableOpacity>
-              </ScrollView>
+                  <View style={styles.stockCurrent}>
+                    <Text style={[styles.stockCurrentLabel, { color: theme.textSecondary }]}>
+                      Stock actuel
+                    </Text>
+                    <Text style={[styles.stockCurrentValue, { color: theme.text }]}>
+                      {stockProduct?.stock || 0}
+                    </Text>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: theme.text }]}>Type</Text>
+                    <View style={styles.typeSelector}>
+                      <TouchableOpacity
+                        style={[
+                          styles.typeOption,
+                          {
+                            backgroundColor: stockType === 'in' ? theme.success : theme.input,
+                            borderColor: stockType === 'in' ? theme.success : theme.border,
+                          },
+                        ]}
+                        onPress={() => setStockType('in')}
+                      >
+                        <Text style={{ color: stockType === 'in' ? theme.white : theme.text, fontWeight: '600' }}>
+                          Entrée
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.typeOption,
+                          {
+                            backgroundColor: stockType === 'out' ? theme.error : theme.input,
+                            borderColor: stockType === 'out' ? theme.error : theme.border,
+                          },
+                        ]}
+                        onPress={() => setStockType('out')}
+                      >
+                        <Text style={{ color: stockType === 'out' ? theme.white : theme.text, fontWeight: '600' }}>
+                          Sortie
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: theme.text }]}>Quantité</Text>
+                    <TextInput
+                      style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                      placeholder="0"
+                      placeholderTextColor={theme.placeholder}
+                      value={stockQty}
+                      onChangeText={setStockQty}
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.saveButton, { backgroundColor: stockType === 'in' ? theme.success : theme.error }]}
+                    onPress={handleStockUpdate}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.saveButtonText, { color: theme.white }]}>Valider</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -650,7 +660,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
   },
-  // --- Nouveaux styles et ajustements pour éviter le chevauchement clavier ---
   keyboardAvoidContainer: {
     flex: 1,
   },
@@ -662,12 +671,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    maxHeight: '85%', // Évite que le panel ne dépasse de l'écran une fois soulevé
+    maxHeight: '80%', 
   },
   scrollForm: {
-    paddingBottom: 24, // Donne de l'espace interne de sécurité pour scroller
+    paddingBottom: 24,
   },
-  // -------------------------------------------------------------------------
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

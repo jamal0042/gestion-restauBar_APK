@@ -4,13 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/src/store/authStore';
 import {
   LayoutDashboard,
-  ShoppingCart,
   Package,
   Users,
   BarChart3,
   Settings,
   Receipt,
-  FileText,
   TrendingUp,
 } from 'lucide-react-native';
 
@@ -27,11 +25,11 @@ export default function TabsLayout() {
   const currentColors = isDark ? COLORS.dark : COLORS.light;
   const insets = useSafeAreaInsets();
 
-  // Barre remontée : paddingBottom minimal pour être flexible
+  // Barre remontée au maximum
   const tabBarPaddingBottom = Platform.select({
-    ios: Math.max(insets.bottom, 8),
-    android: 4,
-    default: 4,
+    ios: Math.max(insets.bottom - 10, 2),
+    android: 2,
+    default: 2,
   });
 
   const screenOptions = {
@@ -40,61 +38,40 @@ export default function TabsLayout() {
       backgroundColor: currentColors.background,
       borderTopColor: currentColors.border,
       borderTopWidth: 1,
-      height: Platform.OS === 'ios' ? 80 : 64,
-      paddingTop: 8,
+      height: Platform.OS === 'ios' ? 72 : 56,
+      paddingTop: 6,
       paddingBottom: tabBarPaddingBottom,
     },
     tabBarActiveTintColor: currentColors.active,
     tabBarInactiveTintColor: currentColors.inactive,
     tabBarLabelStyle: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: '500' as const,
-      marginTop: 2,
+      marginTop: 1,
+    },
+    tabBarIconStyle: {
+      marginTop: 0,
     },
   };
 
-  const tabs = [
-    // Onglet principal : Dashboard (admin) ou Ventes (caissier)
-    {
-      name: 'index',
-      title: isAdmin ? 'Dashboard' : 'Ventes',
-      icon: isAdmin ? LayoutDashboard : Receipt,
-    },
-    // Produits (pour tous)
-    {
-      name: 'products',
-      title: 'Produits',
-      icon: Package,
-    },
-    // Utilisateurs (admin uniquement)
-    ...(isAdmin
-      ? [
-          {
-            name: 'users',
-            title: 'Utilisateurs',
-            icon: Users, // icône personne, pas de triangle
-          },
-          {
-            name: 'reports',
-            title: 'Rapports',
-            icon: BarChart3, // icône graphique, pas de triangle
-          },
-        ]
-      : [
-          // Historique (caissier uniquement)
-          {
-            name: 'history',
-            title: 'Historique',
-            icon: TrendingUp, // icône tendance, pas de triangle
-          },
-        ]),
-    // Paramètres (pour tous)
-    {
-      name: 'settings',
-      title: 'Paramètres',
-      icon: Settings,
-    },
+  // Admin : tous les menus
+  const adminTabs = [
+    { name: 'index', title: 'Dashboard', icon: LayoutDashboard },
+    { name: 'products', title: 'Produits', icon: Package },
+    { name: 'users', title: 'Utilisateurs', icon: Users },
+    { name: 'reports', title: 'Rapports', icon: BarChart3 },
+    { name: 'settings', title: 'Paramètres', icon: Settings },
   ];
+
+  // Caissier : menus limités
+  const cashierTabs = [
+    { name: 'index', title: 'Ventes', icon: Receipt },
+    { name: 'products', title: 'Produits', icon: Package },
+    { name: 'history', title: 'Historique', icon: TrendingUp },
+    { name: 'settings', title: 'Paramètres', icon: Settings },
+  ];
+
+  const tabs = isAdmin ? adminTabs : cashierTabs;
 
   return (
     <Tabs screenOptions={screenOptions}>

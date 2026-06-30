@@ -7,7 +7,10 @@ import {
   useColorScheme,
   ScrollView,
   ActivityIndicator,
+  useWindowDimensions,
+  PixelRatio,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, Printer, Share2, ArrowLeft } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -18,13 +21,28 @@ import { createOrder } from '@/src/database/orders';
 import { getSettings } from '@/src/database/settings';
 import { Order, OrderItem } from '@/src/types';
 
+// Helpers responsifs
+const scaleSize = (size: number, width: number) => {
+  const baseWidth = 375;
+  return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
+};
+
+const scaleFont = (size: number) => {
+  return PixelRatio.roundToNearestPixel(size * PixelRatio.getFontScale());
+};
+
 export default function InvoiceScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { items, getTotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
+
+  const isSmallScreen = screenWidth < 360;
+  const horizontalPadding = isSmallScreen ? 12 : 16;
 
   const [orderId, setOrderId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -35,7 +53,7 @@ export default function InvoiceScreen() {
     email: '',
     numero_fiscal: '',
   });
-  
+
   // ✅ useRef pour stocker les items - persiste entre les rendus
   const savedItemsRef = useRef<any[]>([]);
 
@@ -118,102 +136,128 @@ export default function InvoiceScreen() {
     })) : []
   });
 
-  // Fonction pour gérer le clic sur "Nouvelle vente"
   const handleNewSale = () => {
     router.replace('/tabs');
   };
 
+  // Taille dynamique du QR code selon l'écran
+  const qrSize = scaleSize(isSmallScreen ? 100 : 120, screenWidth);
+  const logoSize = scaleSize(56, screenWidth);
+
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, { 
+        backgroundColor: theme.background, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        paddingTop: insets.top,
+      }]}>
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Traitement en cours...</Text>
+        <Text style={[styles.loadingText, { color: theme.textSecondary, fontSize: scaleFont(15) }]}>
+          Traitement en cours...
+        </Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/tabs') as any} style={styles.backButton}>
-          <ArrowLeft size={24} color={theme.text} />
+    <ScrollView 
+      style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={{ paddingTop: insets.top }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
+        <TouchableOpacity 
+          onPress={() => router.replace('/tabs') as any} 
+          style={styles.backButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <ArrowLeft size={scaleSize(24, screenWidth)} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Reçu</Text>
+        <Text style={[styles.headerTitle, { color: theme.text, fontSize: scaleFont(20) }]}>Reçu</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={[styles.receipt, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      {/* Receipt Card */}
+      <View style={[styles.receipt, { 
+        backgroundColor: theme.card, 
+        borderColor: theme.border,
+        marginHorizontal: horizontalPadding,
+        padding: scaleSize(isSmallScreen ? 16 : 20, screenWidth),
+      }]}>
         {/* Logo & Header */}
         <View style={styles.receiptHeader}>
-          <View style={[styles.logoPlaceholder, { backgroundColor: theme.primary }]}>
-            <Text style={styles.logoText}>{settings.nom_etablissement.charAt(0)}</Text>
+          <View style={[styles.logoPlaceholder, { 
+            backgroundColor: theme.primary,
+            width: logoSize,
+            height: logoSize,
+            borderRadius: logoSize / 2,
+          }]}>
+            <Text style={[styles.logoText, { fontSize: scaleFont(22) }]}>
+              {settings.nom_etablissement.charAt(0)}
+            </Text>
           </View>
-          <Text style={[styles.receiptTitle, { color: theme.text }]}>
+          <Text style={[styles.receiptTitle, { color: theme.text, fontSize: scaleFont(17) }]} numberOfLines={2}>
             {settings.nom_etablissement}
           </Text>
           {settings.adresse ? (
-            <Text style={[styles.receiptInfo, { color: theme.textSecondary }]}>
+            <Text style={[styles.receiptInfo, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
               {settings.adresse}
             </Text>
           ) : null}
           {settings.telephone ? (
-            <Text style={[styles.receiptInfo, { color: theme.textSecondary }]}>
+            <Text style={[styles.receiptInfo, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
               Tel: {settings.telephone}
             </Text>
           ) : null}
           {settings.numero_fiscal ? (
-            <Text style={[styles.receiptInfo, { color: theme.textSecondary }]}>
+            <Text style={[styles.receiptInfo, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
               N° Fiscal: {settings.numero_fiscal}
             </Text>
           ) : null}
         </View>
 
         {/* Divider */}
-        <View style={[styles.divider, { borderColor: theme.border }]}>
-          <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
-          </Text>
-        </View>
+        <View style={[styles.divider, { borderColor: theme.border }]} />
 
         {/* Order Info */}
         <View style={styles.orderInfo}>
-          <Text style={[styles.orderInfoText, { color: theme.textSecondary }]}>
+          <Text style={[styles.orderInfoText, { color: theme.textSecondary, fontSize: scaleFont(11) }]} numberOfLines={1}>
             Commande: {orderId}
           </Text>
-          <Text style={[styles.orderInfoText, { color: theme.textSecondary }]}>
+          <Text style={[styles.orderInfoText, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
             Date: {new Date().toLocaleString('fr-FR')}
           </Text>
-          <Text style={[styles.orderInfoText, { color: theme.textSecondary }]}>
+          <Text style={[styles.orderInfoText, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
             Caissier: {user?.nom || 'N/A'}
           </Text>
-          <Text style={[styles.orderInfoText, { color: theme.textSecondary }]}>
+          <Text style={[styles.orderInfoText, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
             Paiement: {methodLabels[method]}
           </Text>
         </View>
 
         {/* Divider */}
-        <View style={[styles.divider, { borderColor: theme.border }]}>
-          <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
-          </Text>
-        </View>
+        <View style={[styles.divider, { borderColor: theme.border }]} />
 
         {/* ✅ Items : Utiliser savedItemsRef.current */}
         <View style={styles.itemsSection}>
           {savedItemsRef.current.length === 0 && total > 0 ? (
-            <Text style={[styles.emptyItems, { color: theme.textSecondary }]}>
+            <Text style={[styles.emptyItems, { color: theme.textSecondary, fontSize: scaleFont(13) }]}>
               Vente enregistrée
             </Text>
           ) : (
             savedItemsRef.current.map((item, index) => (
               <View key={index} style={styles.itemRow}>
                 <View style={styles.itemLeft}>
-                  <Text style={[styles.itemQty, { color: theme.textSecondary }]}>
+                  <Text style={[styles.itemQty, { color: theme.textSecondary, fontSize: scaleFont(12) }]}>
                     {item.quantite}x
                   </Text>
-                  <Text style={[styles.itemName, { color: theme.text }]}>
+                  <Text style={[styles.itemName, { color: theme.text, fontSize: scaleFont(13) }]} numberOfLines={1}>
                     {item.product.nom}
                   </Text>
                 </View>
-                <Text style={[styles.itemTotal, { color: theme.text }]}>
+                <Text style={[styles.itemTotal, { color: theme.text, fontSize: scaleFont(13) }]} numberOfLines={1}>
                   {formatCurrency(item.product.prix * item.quantite)}
                 </Text>
               </View>
@@ -222,16 +266,13 @@ export default function InvoiceScreen() {
         </View>
 
         {/* Divider */}
-        <View style={[styles.divider, { borderColor: theme.border }]}>
-          <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
-          </Text>
-        </View>
+        <View style={[styles.divider, { borderColor: theme.border }]} />
 
         {/* Total */}
         <View style={styles.totalSection}>
           <View style={styles.totalRow}>
-            <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>Total</Text>
-            <Text style={[styles.totalValue, { color: theme.primary }]}>
+            <Text style={[styles.totalLabel, { color: theme.textSecondary, fontSize: scaleFont(15) }]}>Total</Text>
+            <Text style={[styles.totalValue, { color: theme.primary, fontSize: scaleFont(20) }]} numberOfLines={1} adjustsFontSizeToFit>
               {formatCurrency(total)}
             </Text>
           </View>
@@ -239,59 +280,73 @@ export default function InvoiceScreen() {
 
         {/* Footer avec QR Code */}
         <View style={styles.receiptFooter}>
-          <Text style={[styles.thanksText, { color: theme.textSecondary }]}>
-            Merci de votre visite!
+          <Text style={[styles.thanksText, { color: theme.textSecondary, fontSize: scaleFont(13) }]}>
+            Merci de votre visite !
           </Text>
-          
+
           {/* QR Code réel */}
-          <View style={[styles.qrContainer, { backgroundColor: theme.surface }]}>
+          <View style={[styles.qrContainer, { backgroundColor: theme.surface, padding: scaleSize(14, screenWidth) }]}>
             <QRCode
               value={qrData}
-              size={120}
+              size={qrSize}
               color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'}
               backgroundColor="transparent"
             />
           </View>
-          
-          <Text style={[styles.qrLabel, { color: theme.textSecondary }]}>
+
+          <Text style={[styles.qrLabel, { color: theme.textSecondary, fontSize: scaleFont(10) }]}>
             Scannez pour voir les détails
           </Text>
         </View>
       </View>
 
       {/* Actions */}
-      <View style={styles.actions}>
+      <View style={[styles.actions, { paddingHorizontal: horizontalPadding, gap: isSmallScreen ? 10 : 12 }]}>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.primary }]}
+          style={[styles.actionButton, { 
+            backgroundColor: theme.primary,
+            height: scaleSize(48, screenWidth),
+          }]}
           onPress={handleNewSale}
           activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
-          <CheckCircle size={20} color={theme.white} />
-          <Text style={[styles.actionButtonText, { color: theme.white }]}>
+          <CheckCircle size={scaleSize(20, screenWidth)} color={theme.white} />
+          <Text style={[styles.actionButtonText, { color: theme.white, fontSize: scaleFont(15) }]}>
             Nouvelle vente
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+          style={[styles.actionButton, { 
+            backgroundColor: theme.card, 
+            borderColor: theme.border,
+            height: scaleSize(48, screenWidth),
+          }]}
           activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
-          <Printer size={20} color={theme.text} />
-          <Text style={[styles.actionButtonText, { color: theme.text }]}>
+          <Printer size={scaleSize(20, screenWidth)} color={theme.text} />
+          <Text style={[styles.actionButtonText, { color: theme.text, fontSize: scaleFont(15) }]}>
             Imprimer
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+          style={[styles.actionButton, { 
+            backgroundColor: theme.card, 
+            borderColor: theme.border,
+            height: scaleSize(48, screenWidth),
+          }]}
           activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >
-          <Share2 size={20} color={theme.text} />
-          <Text style={[styles.actionButtonText, { color: theme.text }]}>
+          <Share2 size={scaleSize(20, screenWidth)} color={theme.text} />
+          <Text style={[styles.actionButtonText, { color: theme.text, fontSize: scaleFont(15) }]}>
             Partager
           </Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.bottomPadding} />
+      <View style={{ height: insets.bottom + scaleSize(32, screenWidth) }} />
     </ScrollView>
   );
 }
@@ -304,14 +359,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 24,
+    paddingVertical: 12,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 20,
     fontWeight: '700',
   },
   headerSpacer: {
@@ -319,60 +372,47 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
   },
   receipt: {
-    margin: 16,
     borderRadius: 12,
     borderWidth: 1,
-    padding: 20,
+    marginBottom: 16,
   },
   receiptHeader: {
     alignItems: 'center',
   },
   logoPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   logoText: {
-    fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   receiptTitle: {
-    fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
+    textAlign: 'center',
   },
   receiptInfo: {
-    fontSize: 12,
     marginBottom: 2,
+    textAlign: 'center',
   },
   divider: {
-    alignItems: 'center',
     paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  dividerText: {
-    fontSize: 12,
-    letterSpacing: 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   orderInfo: {
     paddingVertical: 12,
   },
   orderInfoText: {
-    fontSize: 12,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   itemsSection: {
     paddingVertical: 12,
   },
   emptyItems: {
-    fontSize: 14,
     textAlign: 'center',
     paddingVertical: 16,
   },
@@ -380,24 +420,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 5,
+    gap: 8,
   },
   itemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    minWidth: 0, // Permet le truncation du nom
   },
   itemQty: {
-    fontSize: 13,
     width: 28,
+    flexShrink: 0,
   },
   itemName: {
-    fontSize: 14,
     fontWeight: '500',
+    flexShrink: 1,
   },
   itemTotal: {
-    fontSize: 14,
     fontWeight: '600',
+    flexShrink: 0,
   },
   totalSection: {
     paddingVertical: 12,
@@ -408,11 +451,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalLabel: {
-    fontSize: 16,
     fontWeight: '600',
   },
   totalValue: {
-    fontSize: 20,
     fontWeight: '700',
   },
   receiptFooter: {
@@ -420,38 +461,29 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   thanksText: {
-    fontSize: 14,
     marginBottom: 16,
   },
   qrContainer: {
-    padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   qrLabel: {
-    fontSize: 11,
     fontStyle: 'italic',
   },
   actions: {
-    padding: 16,
-    gap: 12,
+    paddingBottom: 8,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 48,
     borderRadius: 12,
     borderWidth: 1,
   },
   actionButtonText: {
-    fontSize: 15,
     fontWeight: '600',
-  },
-  bottomPadding: {
-    height: 32,
   },
 });

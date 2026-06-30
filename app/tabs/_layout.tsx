@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; 
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import crucial pour la flexibilité
 import { useAuthStore } from '@/src/store/authStore';
 import { LayoutDashboard, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
 
@@ -8,7 +8,7 @@ export default function TabsLayout() {
   const { user } = useAuthStore();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const insets = useSafeAreaInsets(); 
+  const insets = useSafeAreaInsets(); // Récupère les zones sécurisées de l'écran (notch, home indicator)
 
   const isAdmin = user?.role === 'admin';
 
@@ -16,11 +16,13 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarPosition: 'bottom', 
+        tabBarPosition: 'bottom', // Force la position en bas
         tabBarStyle: {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
+          
+          // --- CONFIGURATION DYNAMIQUE ET FLEXIBLE ---
           height: 60 + insets.bottom, 
           paddingTop: 8,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8, 
@@ -34,7 +36,7 @@ export default function TabsLayout() {
         },
       }}
     >
-      {/* 1. INDEX (Dashboard pour Admin / Ventes pour Cashier) */}
+      {/* 1. Onglet Principal (Dashboard ou Ventes) - Toujours visible */}
       <Tabs.Screen
         name="index"
         options={{
@@ -45,7 +47,7 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* 2. PRODUITS (Visible par tout le monde) */}
+      {/* 2. Produits - Toujours visible pour Admin et Cashier */}
       <Tabs.Screen
         name="products"
         options={{
@@ -54,48 +56,37 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* 3. UTILISATEURS (Uniquement Admin) */}
+      {/* 3. Utilisateurs - Visible SEULEMENT pour l'Admin, masqué sans crash pour le Cashier */}
       <Tabs.Screen
         name="users"
         options={{
           title: 'Utilisateurs',
+          href: isAdmin ? '/users' : null, // Si pas admin, l'onglet disparaît complètement sans chercher le fichier
           tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
-          // Si l'utilisateur n'est pas Admin, on supprime complètement le bouton du menu
-          tabBarButton: isAdmin ? undefined : () => null,
         }}
       />
 
-      {/* 4. RAPPORTS (Uniquement Admin) */}
+      {/* 4. Rapports - Visible SEULEMENT pour l'Admin */}
       <Tabs.Screen
         name="reports"
         options={{
           title: 'Rapports',
+          href: isAdmin ? '/reports' : null, // Masqué proprement si c'est le cashier
           tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          tabBarButton: isAdmin ? undefined : () => null,
         }}
       />
 
-      {/* 5. HISTORIQUE (Uniquement Cashier) */}
+      {/* 5. Historique - Visible SEULEMENT pour le Cashier */}
       <Tabs.Screen
         name="history"
         options={{
           title: 'Historique',
+          href: !isAdmin ? '/history' : null, // Masqué proprement si c'est l'admin
           tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          tabBarButton: !isAdmin ? undefined : () => null,
         }}
       />
 
-      {/* 6. INVOICE / FACTURES (Optionnel : Cache-le ici si présent dans tes fichiers) */}
-      <Tabs.Screen
-        name="invoice"
-        options={{
-          title: 'Factures',
-          tabBarIcon: ({ color, size }) => <Receipt size={size} color={color} />,
-          tabBarButton: () => null, // Reste masqué de la barre principale si géré ailleurs
-        }}
-      />
-
-      {/* 7. PARAMÈTRES (Visible par tout le monde) */}
+      {/* 6. Paramètres - Toujours visible */}
       <Tabs.Screen
         name="settings"
         options={{

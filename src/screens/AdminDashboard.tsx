@@ -6,9 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   useColorScheme,
-  Dimensions,
   RefreshControl,
+  useWindowDimensions,
+  PixelRatio,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   DollarSign,
@@ -22,12 +24,25 @@ import { lightTheme, darkTheme } from '@/src/utils/theme';
 import { getDailySales, getTopProducts, getLowStockProducts } from '@/src/database';
 import { getToday } from '@/src/utils/date';
 
-const { width } = Dimensions.get('window');
+// Helpers responsifs
+const scaleSize = (size: number, width: number) => {
+  const baseWidth = 375;
+  return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
+};
+
+const scaleFont = (size: number) => {
+  return PixelRatio.roundToNearestPixel(size * PixelRatio.getFontScale());
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  const isSmallScreen = screenWidth < 360;
+  const horizontalPadding = isSmallScreen ? 12 : 16;
 
   const [todaySales, setTodaySales] = useState({ total: 0, count: 0 });
   const [topProducts, setTopProducts] = useState<{ nom: string; quantite: number; total: number }[]>([]);
@@ -93,54 +108,112 @@ export default function AdminDashboard() {
     },
   ];
 
+  // Calcul dynamique de la largeur des cartes stats (2 par ligne)
+  const statCardWidth = (screenWidth - (horizontalPadding * 2) - 12) / 2;
+  const iconBoxSize = scaleSize(40, screenWidth);
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      contentContainerStyle={{ paddingTop: insets.top }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={theme.primary}
+          colors={[theme.primary]}
+        />
+      }
+      showsVerticalScrollIndicator={false}
     >
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Tableau de bord</Text>
-        <Text style={[styles.headerDate, { color: theme.textSecondary }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
+        <Text style={[styles.headerTitle, { color: theme.text, fontSize: scaleFont(24) }]}>
+          Tableau de bord
+        </Text>
+        <Text style={[styles.headerDate, { color: theme.textSecondary, fontSize: scaleFont(13) }]}>
           {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </Text>
       </View>
 
-      <View style={styles.statsGrid}>
+      {/* Stats Grid */}
+      <View style={[styles.statsGrid, { paddingHorizontal: horizontalPadding }]}>
         {stats.map((stat, index) => (
           <TouchableOpacity
             key={index}
-            style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            style={[
+              styles.statCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                width: statCardWidth,
+                padding: scaleSize(14, screenWidth),
+              },
+            ]}
             activeOpacity={0.8}
             onPress={() => router.push(stat.route as any)}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
-            <View style={[styles.iconWrapper, { backgroundColor: stat.color + '15' }]}>
-              <stat.icon size={24} color={stat.color} />
+            <View style={[styles.iconWrapper, {
+              backgroundColor: stat.color + '15',
+              width: iconBoxSize,
+              height: iconBoxSize,
+              borderRadius: scaleSize(10, screenWidth),
+            }]}>
+              <stat.icon size={scaleSize(22, screenWidth)} color={stat.color} />
             </View>
-            <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
-            <Text style={[styles.statTitle, { color: theme.textSecondary }]}>{stat.title}</Text>
+            <Text
+              style={[styles.statValue, { color: theme.text, fontSize: scaleFont(16) }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {stat.value}
+            </Text>
+            <Text style={[styles.statTitle, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
+              {stat.title}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      {/* Top Products Section */}
+      <View style={[styles.section, {
+        backgroundColor: theme.card,
+        borderColor: theme.border,
+        marginHorizontal: horizontalPadding,
+        padding: scaleSize(14, screenWidth),
+      }]}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Produits les plus vendus</Text>
-          <TouchableOpacity onPress={() => router.push('/tabs/products' as any)}>
-            <ArrowRight size={20} color={theme.primary} />
+          <Text style={[styles.sectionTitle, { color: theme.text, fontSize: scaleFont(15) }]}>
+            Produits les plus vendus
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/tabs/products' as any)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ArrowRight size={scaleSize(20, screenWidth)} color={theme.primary} />
           </TouchableOpacity>
         </View>
         {topProducts.length === 0 ? (
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Aucune vente aujourd'hui</Text>
+          <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: scaleFont(13) }]}>
+            Aucune vente aujourd'hui
+          </Text>
         ) : (
           topProducts.map((product, index) => (
             <View key={index} style={[styles.productRow, { borderBottomColor: theme.border }]}>
               <View style={styles.productInfo}>
-                <Text style={[styles.productRank, { color: theme.primary }]}>#{index + 1}</Text>
-                <Text style={[styles.productName, { color: theme.text }]}>{product.nom}</Text>
+                <Text style={[styles.productRank, { color: theme.primary, fontSize: scaleFont(13), width: scaleSize(26, screenWidth) }]}>
+                  #{index + 1}
+                </Text>
+                <Text style={[styles.productName, { color: theme.text, fontSize: scaleFont(13) }]} numberOfLines={1}>
+                  {product.nom}
+                </Text>
               </View>
               <View style={styles.productStats}>
-                <Text style={[styles.productQty, { color: theme.textSecondary }]}>{product.quantite} vendu(s)</Text>
-                <Text style={[styles.productTotal, { color: theme.primary }]}>
+                <Text style={[styles.productQty, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
+                  {product.quantite} vendu(s)
+                </Text>
+                <Text style={[styles.productTotal, { color: theme.primary, fontSize: scaleFont(13) }]}>
                   {formatCurrency(product.total)}
                 </Text>
               </View>
@@ -149,21 +222,34 @@ export default function AdminDashboard() {
         )}
       </View>
 
+      {/* Low Stock Section */}
       {lowStock.length > 0 && (
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.section, {
+          backgroundColor: theme.card,
+          borderColor: theme.border,
+          marginHorizontal: horizontalPadding,
+          padding: scaleSize(14, screenWidth),
+        }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.error }]}>Stock faible</Text>
-            <TouchableOpacity onPress={() => router.push('/tabs/products' as any)}>
-              <ArrowRight size={20} color={theme.error} />
+            <Text style={[styles.sectionTitle, { color: theme.error, fontSize: scaleFont(15) }]}>
+              Stock faible
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/tabs/products' as any)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ArrowRight size={scaleSize(20, screenWidth)} color={theme.error} />
             </TouchableOpacity>
           </View>
           {lowStock.map((product, index) => (
             <View key={index} style={[styles.stockRow, { borderBottomColor: theme.border }]}>
               <View style={styles.stockInfo}>
-                <AlertTriangle size={18} color={theme.warning} />
-                <Text style={[styles.stockName, { color: theme.text }]}>{product.nom}</Text>
+                <AlertTriangle size={scaleSize(16, screenWidth)} color={theme.warning} />
+                <Text style={[styles.stockName, { color: theme.text, fontSize: scaleFont(13) }]} numberOfLines={1}>
+                  {product.nom}
+                </Text>
               </View>
-              <Text style={[styles.stockValue, { color: theme.error }]}>
+              <Text style={[styles.stockValue, { color: theme.error, fontSize: scaleFont(13) }]}>
                 {product.stock} restant(s)
               </Text>
             </View>
@@ -171,39 +257,50 @@ export default function AdminDashboard() {
         </View>
       )}
 
-      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      {/* Quick Actions Section */}
+      <View style={[styles.section, {
+        backgroundColor: theme.card,
+        borderColor: theme.border,
+        marginHorizontal: horizontalPadding,
+        padding: scaleSize(14, screenWidth),
+      }]}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Accès rapide</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text, fontSize: scaleFont(15) }]}>
+            Accès rapide
+          </Text>
         </View>
-        <View style={styles.quickActions}>
+        <View style={[styles.quickActions, { gap: isSmallScreen ? 8 : 12 }]}>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: theme.primary }]}
+            style={[styles.actionButton, { backgroundColor: theme.primary, padding: scaleSize(14, screenWidth) }]}
             onPress={() => router.push('/tabs/products' as any)}
             activeOpacity={0.8}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
-            <Package size={24} color={theme.white} />
-            <Text style={[styles.actionText, { color: theme.white }]}>Produits</Text>
+            <Package size={scaleSize(22, screenWidth)} color={theme.white} />
+            <Text style={[styles.actionText, { color: theme.white, fontSize: scaleFont(12) }]}>Produits</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: theme.primary }]}
+            style={[styles.actionButton, { backgroundColor: theme.primary, padding: scaleSize(14, screenWidth) }]}
             onPress={() => router.push('/tabs/users' as any)}
             activeOpacity={0.8}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
-            <ShoppingBag size={24} color={theme.white} />
-            <Text style={[styles.actionText, { color: theme.white }]}>Utilisateurs</Text>
+            <ShoppingBag size={scaleSize(22, screenWidth)} color={theme.white} />
+            <Text style={[styles.actionText, { color: theme.white, fontSize: scaleFont(12) }]}>Utilisateurs</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: theme.primary }]}
+            style={[styles.actionButton, { backgroundColor: theme.primary, padding: scaleSize(14, screenWidth) }]}
             onPress={() => router.push('/tabs/reports' as any)}
             activeOpacity={0.8}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
-            <TrendingUp size={24} color={theme.white} />
-            <Text style={[styles.actionText, { color: theme.white }]}>Rapports</Text>
+            <TrendingUp size={scaleSize(22, screenWidth)} color={theme.white} />
+            <Text style={[styles.actionText, { color: theme.white, fontSize: scaleFont(12) }]}>Rapports</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.bottomPadding} />
+      <View style={{ height: insets.bottom + scaleSize(32, screenWidth) }} />
     </ScrollView>
   );
 }
@@ -213,52 +310,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 20,
-    paddingTop: 24,
+    paddingVertical: 16,
   },
   headerTitle: {
-    fontSize: 28,
     fontWeight: '700',
   },
   headerDate: {
-    fontSize: 14,
     marginTop: 4,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 16,
     gap: 12,
+    marginBottom: 16,
   },
   statCard: {
-    width: (width - 56) / 2,
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
   },
   iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   statValue: {
-    fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
   },
   statTitle: {
-    fontSize: 12,
     fontWeight: '500',
   },
   section: {
-    margin: 16,
-    marginTop: 16,
     borderRadius: 12,
-    padding: 16,
     borderWidth: 1,
+    marginBottom: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -267,81 +352,76 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 16,
     fontWeight: '700',
   },
   productRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   productInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    minWidth: 0,
   },
   productRank: {
-    fontSize: 14,
     fontWeight: '700',
-    width: 28,
+    flexShrink: 0,
   },
   productName: {
-    fontSize: 14,
     fontWeight: '500',
+    flexShrink: 1,
   },
   productStats: {
     alignItems: 'flex-end',
+    marginLeft: 8,
   },
   productQty: {
-    fontSize: 12,
+    marginBottom: 2,
   },
   productTotal: {
-    fontSize: 14,
     fontWeight: '700',
   },
   stockRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   stockInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    minWidth: 0,
   },
   stockName: {
-    fontSize: 14,
     fontWeight: '500',
+    flexShrink: 1,
   },
   stockValue: {
-    fontSize: 14,
     fontWeight: '700',
+    marginLeft: 8,
   },
   emptyText: {
-    fontSize: 14,
     textAlign: 'center',
     paddingVertical: 16,
   },
   quickActions: {
     flexDirection: 'row',
-    gap: 12,
   },
   actionButton: {
     flex: 1,
-    padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     gap: 8,
   },
   actionText: {
-    fontSize: 13,
     fontWeight: '600',
-  },
-  bottomPadding: {
-    height: 32,
   },
 });

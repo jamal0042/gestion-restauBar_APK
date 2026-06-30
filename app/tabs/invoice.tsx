@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, Printer, Share2, ArrowLeft } from 'lucide-react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { lightTheme, darkTheme } from '@/src/utils/theme';
 import { useCartStore } from '@/src/store/cartStore';
 import { useAuthStore } from '@/src/store/authStore';
@@ -95,6 +96,21 @@ export default function InvoiceScreen() {
       minimumFractionDigits: 0,
     }).format(amount);
   };
+
+  // Génère les données pour le QR code
+  const qrData = JSON.stringify({
+    orderId,
+    establishment: settings.nom_etablissement,
+    date: new Date().toISOString(),
+    total,
+    method: methodLabels[method],
+    cashier: user?.nom || 'N/A',
+    items: items.length > 0 ? items.map(i => ({
+      name: i.product.nom,
+      qty: i.quantite,
+      price: i.product.prix * i.quantite
+    })) : []
+  });
 
   if (loading) {
     return (
@@ -212,14 +228,28 @@ export default function InvoiceScreen() {
           </View>
         </View>
 
-        {/* Footer */}
+        {/* Footer avec QR Code */}
         <View style={styles.receiptFooter}>
           <Text style={[styles.thanksText, { color: theme.textSecondary }]}>
             Merci de votre visite!
           </Text>
-          <View style={[styles.qrPlaceholder, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.qrText, { color: theme.textSecondary }]}>QR Code</Text>
+          
+          {/* QR Code réel */}
+          <View style={[styles.qrContainer, { backgroundColor: theme.surface }]}>
+            <QRCode
+              value={qrData}
+              size={120}
+              color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'}
+              backgroundColor="transparent"
+              logoSize={30}
+              logoMargin={2}
+              logoBorderRadius={4}
+            />
           </View>
+          
+          <Text style={[styles.qrLabel, { color: theme.textSecondary }]}>
+            Scannez pour voir les détails
+          </Text>
         </View>
       </View>
 
@@ -387,34 +417,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 16,
   },
-  qrPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrText: {
-    fontSize: 11,
-  },
-  actions: {
+  qrContainer: {
     padding: 16,
-    gap: 12,
-  },
-  actionButton: {
-    flexDirection: 'row',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
+    marginBottom: 12,
   },
-  actionButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  bottomPadding: {
-    height: 32,
-  },
-});
+  qrLabel: {
+    fontSize: 11,

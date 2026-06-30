@@ -9,7 +9,15 @@ import {
   TextInput,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  PixelRatio,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Plus,
   Search,
@@ -24,9 +32,21 @@ import { lightTheme, darkTheme } from '@/src/utils/theme';
 import { getUsers, createUser, updateUser, deleteUser } from '@/src/database/users';
 import { User as UserType, UserRole } from '@/src/types';
 
+// Helpers responsifs
+const scaleSize = (size: number, width: number) => {
+  const baseWidth = 375;
+  return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
+};
+
+const scaleFont = (size: number) => {
+  return PixelRatio.roundToNearestPixel(size * PixelRatio.getFontScale());
+};
+
 export default function UsersScreen() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const [users, setUsers] = useState<UserType[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserType[]>([]);
@@ -38,6 +58,9 @@ export default function UsersScreen() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('cashier');
+
+  const isSmallScreen = screenWidth < 360;
+  const modalMaxHeight = screenHeight < 600 ? '92%' : '85%';
 
   const loadUsers = useCallback(async () => {
     const all = await getUsers();
@@ -138,76 +161,110 @@ export default function UsersScreen() {
     setEditingUser(null);
   };
 
-  const renderUser = ({ item }: { item: UserType }) => (
-    <View style={[styles.userCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <View style={styles.userAvatar}>
-        <User size={24} color={theme.white} />
-      </View>
-      <View style={styles.userDetails}>
-        <Text style={[styles.userName, { color: theme.text }]}>{item.nom}</Text>
-        <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{item.email}</Text>
-        <View style={[styles.roleBadge, { backgroundColor: item.role === 'admin' ? theme.primary + '15' : theme.success + '15' }]}>
-          <Shield size={12} color={item.role === 'admin' ? theme.primary : theme.success} />
-          <Text style={[styles.roleText, { color: item.role === 'admin' ? theme.primary : theme.success }]}>
-            {item.role === 'admin' ? 'Admin' : 'Caissier'}
+  const renderUser = ({ item }: { item: UserType }) => {
+    const isAdmin = item.role === 'admin';
+    const roleColor = isAdmin ? theme.primary : theme.success;
+    const avatarSize = scaleSize(48, screenWidth);
+    const btnSize = scaleSize(40, screenWidth);
+
+    return (
+      <View style={[styles.userCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.userAvatar, { 
+          width: avatarSize, 
+          height: avatarSize, 
+          borderRadius: avatarSize / 2,
+        }]}>
+          <User size={scaleSize(22, screenWidth)} color={theme.white} />
+        </View>
+        <View style={styles.userDetails}>
+          <Text style={[styles.userName, { color: theme.text, fontSize: scaleFont(15) }]} numberOfLines={1}>
+            {item.nom}
           </Text>
+          <Text style={[styles.userEmail, { color: theme.textSecondary, fontSize: scaleFont(12) }]} numberOfLines={1}>
+            {item.email}
+          </Text>
+          <View style={[styles.roleBadge, { backgroundColor: roleColor + '15' }]}>
+            <Shield size={scaleSize(11, screenWidth)} color={roleColor} />
+            <Text style={[styles.roleText, { color: roleColor, fontSize: scaleFont(11) }]}>
+              {isAdmin ? 'Admin' : 'Caissier'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.userActions}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: theme.success + '15', width: btnSize, height: btnSize }]}
+            onPress={() => openForm(item)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Edit3 size={scaleSize(16, screenWidth)} color={theme.success} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: theme.error + '15', width: btnSize, height: btnSize }]}
+            onPress={() => handleDelete(item)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Trash2 size={scaleSize(16, screenWidth)} color={theme.error} />
+          </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.userActions}>
-        <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: theme.success + '15' }]}
-          onPress={() => openForm(item)}
-        >
-          <Edit3 size={16} color={theme.success} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: theme.error + '15' }]}
-          onPress={() => handleDelete(item)}
-        >
-          <Trash2 size={16} color={theme.error} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Utilisateurs</Text>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingHorizontal: isSmallScreen ? 12 : 16 }]}>
+        <Text style={[styles.headerTitle, { color: theme.text, fontSize: scaleFont(22) }]}>Utilisateurs</Text>
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
+          style={[styles.addButton, { 
+            backgroundColor: theme.primary, 
+            width: scaleSize(44, screenWidth), 
+            height: scaleSize(44, screenWidth),
+          }]}
           onPress={() => openForm()}
           activeOpacity={0.8}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Plus size={20} color={theme.white} />
+          <Plus size={scaleSize(20, screenWidth)} color={theme.white} />
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.searchContainer, { backgroundColor: theme.input, borderColor: theme.border }]}>
-        <Search size={20} color={theme.textSecondary} />
+      {/* Search */}
+      <View style={[styles.searchContainer, { 
+        backgroundColor: theme.input, 
+        borderColor: theme.border,
+        marginHorizontal: isSmallScreen ? 12 : 16,
+        height: scaleSize(44, screenWidth),
+      }]}>
+        <Search size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
         <TextInput
-          style={[styles.searchInput, { color: theme.text }]}
+          style={[styles.searchInput, { color: theme.text, fontSize: scaleFont(15) }]}
           placeholder="Rechercher..."
           placeholderTextColor={theme.placeholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <X size={18} color={theme.textSecondary} />
+          <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <X size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
 
+      {/* List */}
       <FlatList
         data={filteredUsers}
         renderItem={renderUser}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.usersList}
+        contentContainerStyle={[styles.usersList, { paddingHorizontal: isSmallScreen ? 12 : 16 }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+          <View style={[styles.emptyContainer, { paddingVertical: screenHeight * 0.15 }]}>
+            <View style={[styles.emptyIcon, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <User size={scaleSize(36, screenWidth)} color={theme.textSecondary} />
+            </View>
+            <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: scaleFont(15) }]}>
               Aucun utilisateur trouvé
             </Text>
           </View>
@@ -215,102 +272,159 @@ export default function UsersScreen() {
       />
 
       {/* User Form Modal */}
-      <Modal visible={showForm} animationType="slide" transparent>
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-          <View style={[styles.modalPanel, { backgroundColor: theme.background }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>
-                {editingUser ? 'Modifier' : 'Nouvel utilisateur'}
-              </Text>
-              <TouchableOpacity onPress={closeForm}>
-                <X size={24} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: theme.text }]}>Nom *</Text>
-              <TextInput
-                style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-                placeholder="Nom complet"
-                placeholderTextColor={theme.placeholder}
-                value={formName}
-                onChangeText={setFormName}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: theme.text }]}>Email *</Text>
-              <TextInput
-                style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-                placeholder="email@exemple.com"
-                placeholderTextColor={theme.placeholder}
-                value={formEmail}
-                onChangeText={setFormEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: theme.text }]}>
-                {editingUser ? 'Nouveau mot de passe (laisser vide pour conserver)' : 'Mot de passe *'}
-              </Text>
-              <TextInput
-                style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
-                placeholder="••••••••"
-                placeholderTextColor={theme.placeholder}
-                value={formPassword}
-                onChangeText={setFormPassword}
-                secureTextEntry
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: theme.text }]}>Rôle</Text>
-              <View style={styles.roleSelector}>
-                <TouchableOpacity
-                  style={[
-                    styles.roleOption,
-                    {
-                      backgroundColor: formRole === 'admin' ? theme.primary : theme.input,
-                      borderColor: formRole === 'admin' ? theme.primary : theme.border,
-                    },
-                  ]}
-                  onPress={() => setFormRole('admin')}
-                >
-                  <Shield size={16} color={formRole === 'admin' ? theme.white : theme.text} />
-                  <Text style={{ color: formRole === 'admin' ? theme.white : theme.text, fontWeight: '600', marginLeft: 6 }}>
-                    Admin
+      <Modal visible={showForm} animationType="slide" transparent onRequestClose={closeForm}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidContainer}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 10 : 0}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+              <View style={[styles.modalPanel, { 
+                backgroundColor: theme.background,
+                maxHeight: modalMaxHeight,
+                borderTopLeftRadius: isSmallScreen ? 16 : 24,
+                borderTopRightRadius: isSmallScreen ? 16 : 24,
+                padding: isSmallScreen ? 16 : 20,
+              }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: theme.text, fontSize: scaleFont(18), flex: 1 }]} numberOfLines={1}>
+                    {editingUser ? 'Modifier' : 'Nouvel utilisateur'}
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.roleOption,
-                    {
-                      backgroundColor: formRole === 'cashier' ? theme.success : theme.input,
-                      borderColor: formRole === 'cashier' ? theme.success : theme.border,
-                    },
-                  ]}
-                  onPress={() => setFormRole('cashier')}
+                  <TouchableOpacity onPress={closeForm} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <X size={scaleSize(24, screenWidth)} color={theme.text} />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView 
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
+                  contentContainerStyle={styles.scrollForm}
                 >
-                  <User size={16} color={formRole === 'cashier' ? theme.white : theme.text} />
-                  <Text style={{ color: formRole === 'cashier' ? theme.white : theme.text, fontWeight: '600', marginLeft: 6 }}>
-                    Caissier
-                  </Text>
-                </TouchableOpacity>
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Nom *</Text>
+                    <TextInput
+                      style={[styles.formInput, { 
+                        backgroundColor: theme.input, 
+                        color: theme.text, 
+                        borderColor: theme.border,
+                        fontSize: scaleFont(16),
+                        height: scaleSize(48, screenWidth),
+                      }]}
+                      placeholder="Nom complet"
+                      placeholderTextColor={theme.placeholder}
+                      value={formName}
+                      onChangeText={setFormName}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Email *</Text>
+                    <TextInput
+                      style={[styles.formInput, { 
+                        backgroundColor: theme.input, 
+                        color: theme.text, 
+                        borderColor: theme.border,
+                        fontSize: scaleFont(16),
+                        height: scaleSize(48, screenWidth),
+                      }]}
+                      placeholder="email@exemple.com"
+                      placeholderTextColor={theme.placeholder}
+                      value={formEmail}
+                      onChangeText={setFormEmail}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>
+                      {editingUser ? 'Nouveau mot de passe (vide = inchangé)' : 'Mot de passe *'}
+                    </Text>
+                    <TextInput
+                      style={[styles.formInput, { 
+                        backgroundColor: theme.input, 
+                        color: theme.text, 
+                        borderColor: theme.border,
+                        fontSize: scaleFont(16),
+                        height: scaleSize(48, screenWidth),
+                      }]}
+                      placeholder="••••••••"
+                      placeholderTextColor={theme.placeholder}
+                      value={formPassword}
+                      onChangeText={setFormPassword}
+                      secureTextEntry
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Rôle</Text>
+                    <View style={[styles.roleSelector, { gap: isSmallScreen ? 8 : 12 }]}>
+                      <TouchableOpacity
+                        style={[
+                          styles.roleOption,
+                          {
+                            backgroundColor: formRole === 'admin' ? theme.primary : theme.input,
+                            borderColor: formRole === 'admin' ? theme.primary : theme.border,
+                            paddingVertical: scaleSize(12, screenWidth),
+                          },
+                        ]}
+                        onPress={() => setFormRole('admin')}
+                        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                      >
+                        <Shield size={scaleSize(16, screenWidth)} color={formRole === 'admin' ? theme.white : theme.text} />
+                        <Text style={{ 
+                          color: formRole === 'admin' ? theme.white : theme.text, 
+                          fontWeight: '600', 
+                          marginLeft: 6,
+                          fontSize: scaleFont(13),
+                        }}>
+                          Admin
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.roleOption,
+                          {
+                            backgroundColor: formRole === 'cashier' ? theme.success : theme.input,
+                            borderColor: formRole === 'cashier' ? theme.success : theme.border,
+                            paddingVertical: scaleSize(12, screenWidth),
+                          },
+                        ]}
+                        onPress={() => setFormRole('cashier')}
+                        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                      >
+                        <User size={scaleSize(16, screenWidth)} color={formRole === 'cashier' ? theme.white : theme.text} />
+                        <Text style={{ 
+                          color: formRole === 'cashier' ? theme.white : theme.text, 
+                          fontWeight: '600', 
+                          marginLeft: 6,
+                          fontSize: scaleFont(13),
+                        }}>
+                          Caissier
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.saveButton, { 
+                      backgroundColor: theme.primary,
+                      height: scaleSize(52, screenWidth),
+                      marginTop: isSmallScreen ? 4 : 8,
+                    }]}
+                    onPress={handleSave}
+                    activeOpacity={0.8}
+                  >
+                    <Save size={scaleSize(20, screenWidth)} color={theme.white} />
+                    <Text style={[styles.saveButtonText, { color: theme.white, fontSize: scaleFont(16) }]}>Sauvegarder</Text>
+                  </TouchableOpacity>
+                </ScrollView>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={[styles.saveButton, { backgroundColor: theme.primary }]}
-              onPress={handleSave}
-              activeOpacity={0.8}
-            >
-              <Save size={20} color={theme.white} />
-              <Text style={[styles.saveButtonText, { color: theme.white }]}>Sauvegarder</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -324,16 +438,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    paddingTop: 24,
+    paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 24,
     fontWeight: '700',
   },
   addButton: {
-    width: 44,
-    height: 44,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -341,49 +451,41 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
-    height: 44,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: 15,
   },
   usersList: {
-    padding: 16,
     gap: 10,
+    paddingBottom: 20,
   },
   userCard: {
     flexDirection: 'row',
     borderRadius: 12,
     borderWidth: 1,
     padding: 12,
-    marginBottom: 8,
     alignItems: 'center',
+    gap: 12,
   },
   userAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
     backgroundColor: '#C2185B',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   userDetails: {
     flex: 1,
+    minWidth: 0, // Permet le truncation du texte
   },
   userName: {
-    fontSize: 16,
     fontWeight: '600',
     marginBottom: 2,
   },
   userEmail: {
-    fontSize: 13,
     marginBottom: 4,
   },
   roleBadge: {
@@ -391,12 +493,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
     gap: 4,
   },
   roleText: {
-    fontSize: 11,
     fontWeight: '600',
   },
   userActions: {
@@ -404,28 +505,38 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   actionBtn: {
-    width: 36,
-    height: 36,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyContainer: {
-    paddingVertical: 60,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginBottom: 12,
   },
   emptyText: {
-    fontSize: 16,
+    textAlign: 'center',
+  },
+  keyboardAvoidContainer: {
+    flex: 1,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   modalPanel: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '90%',
+    paddingBottom: 20,
+  },
+  scrollForm: {
+    paddingBottom: 24,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -434,34 +545,28 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
     fontWeight: '700',
   },
   formGroup: {
     marginBottom: 16,
   },
   formLabel: {
-    fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
   },
   formInput: {
-    height: 48,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 16,
-    fontSize: 16,
   },
   roleSelector: {
     flexDirection: 'row',
-    gap: 12,
   },
   roleOption: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
   },
@@ -470,12 +575,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 52,
     borderRadius: 12,
-    marginTop: 8,
   },
   saveButtonText: {
-    fontSize: 16,
     fontWeight: '700',
   },
 });

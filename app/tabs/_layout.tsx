@@ -1,68 +1,47 @@
 import { Tabs } from 'expo-router';
-import { useColorScheme, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme, Platform } from 'react-native'; // Ajout de Platform
 import { useAuthStore } from '@/src/store/authStore';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Users, 
-  BarChart3, 
-  Settings, 
-  Receipt 
-} from 'lucide-react-native';
+import { LayoutDashboard, ShoppingCart, Package, Users, BarChart3, Settings, Receipt } from 'lucide-react-native';
 
 export default function TabsLayout() {
   const { user } = useAuthStore();
   const colorScheme = useColorScheme();
-  const insets = useSafeAreaInsets(); 
   const isDark = colorScheme === 'dark';
-  const isAdmin = user?.role === 'admin';
 
-  const colors = {
-    tabBarBg: isDark ? '#212121' : '#FFFFFF',
-    borderTop: isDark ? '#424242' : '#E0E0E0',
-    activeTint: '#C2185B',
-    inactiveTint: isDark ? '#9E9E9E' : '#757575',
-  };
+  const isAdmin = user?.role === 'admin';
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.tabBarBg,
-          borderTopColor: colors.borderTop,
+          backgroundColor: isDark ? '#212121' : '#FFFFFF',
+          borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
-          height: 70 + insets.bottom, 
-          paddingTop: 8,
-          paddingBottom: insets.bottom, 
+          
+          // --- CONFIGURATION CORRIGÉE POUR LE BAS DE L'ÉCRAN ---
+          height: Platform.OS === 'ios' ? 88 : 72, // Plus haut pour s'adapter aux écrans modernes
+          paddingTop: 12, // Donne de l'espace au-dessus de l'icône
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12, // Remonte le texte sur iOS (barre d'accueil) et Android
         },
-        tabBarActiveTintColor: colors.activeTint,
-        tabBarInactiveTintColor: colors.inactiveTint,
+        tabBarActiveTintColor: '#C2185B',
+        tabBarInactiveTintColor: isDark ? '#9E9E9E' : '#757575',
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
-          marginTop: 4,
+          marginTop: 4, // Un petit espace entre l'icône et le texte pour l'esthétique
         },
-        // ✅ CORRECTION : Remplacement par tabBarPressColor pour l'effet ripple sur Android
-        // (Supprime cette ligne si tu n'en as pas besoin)
-        tabBarPressColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', 
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: isAdmin ? 'Dashboard' : 'Ventes',
-          tabBarIcon: ({ color, size }) =>
-            isAdmin ? (
-              <LayoutDashboard size={size} color={color} />
-            ) : (
-              <Receipt size={size} color={color} />
-            ),
+          tabBarIcon: ({ color, size }) => (
+            isAdmin ? <LayoutDashboard size={size} color={color} /> : <Receipt size={size} color={color} />
+          ),
         }}
       />
-
       <Tabs.Screen
         name="products"
         options={{
@@ -70,38 +49,33 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Package size={size} color={color} />,
         }}
       />
-
-      {/* Onglets conditionnels cachés via display: 'none' pour éviter les bugs de routing */}
-      <Tabs.Screen
-        name="users"
-        options={{
-          title: 'Utilisateurs',
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
-          tabBarStyle: { display: isAdmin ? 'flex' : 'none' }, 
-          href: isAdmin ? undefined : null, 
-        }}
-      />
-
-      <Tabs.Screen
-        name="reports"
-        options={{
-          title: 'Rapports',
-          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          tabBarStyle: { display: isAdmin ? 'flex' : 'none' },
-          href: isAdmin ? undefined : null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'Historique',
-          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          tabBarStyle: { display: !isAdmin ? 'flex' : 'none' },
-          href: !isAdmin ? undefined : null,
-        }}
-      />
-
+      {isAdmin && (
+        <Tabs.Screen
+          name="users"
+          options={{
+            title: 'Utilisateurs',
+            tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          }}
+        />
+      )}
+      {isAdmin && (
+        <Tabs.Screen
+          name="reports"
+          options={{
+            title: 'Rapports',
+            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+          }}
+        />
+      )}
+      {!isAdmin && (
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: 'Historique',
+            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+          }}
+        />
+      )}
       <Tabs.Screen
         name="settings"
         options={{

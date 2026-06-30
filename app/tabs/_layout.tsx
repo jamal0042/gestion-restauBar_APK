@@ -23,21 +23,20 @@ export default function TabsLayout() {
           borderTopWidth: 1,
           
           // --- CONFIGURATION DYNAMIQUE ET FLEXIBLE ---
-          // Le height s'adapte automatiquement : base de 60px + la zone sécurisée du bas de l'appareil
           height: 60 + insets.bottom, 
           paddingTop: 8,
-          // Si l'appareil n'a pas de zone sécurisée en bas (ex: vieux Android), on met 8px par défaut
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8, 
         },
         tabBarActiveTintColor: '#C2185B',
         tabBarInactiveTintColor: isDark ? '#9E9E9E' : '#757575',
         tabBarLabelStyle: {
-          fontSize: 11, // Légèrement réduit pour éviter que le texte ne se cache sur les petits écrans
+          fontSize: 11, 
           fontWeight: '500',
           marginTop: 2,
         },
       }}
     >
+      {/* 1. Onglet Principal (Dashboard ou Ventes) - Toujours visible */}
       <Tabs.Screen
         name="index"
         options={{
@@ -47,6 +46,8 @@ export default function TabsLayout() {
           ),
         }}
       />
+
+      {/* 2. Produits - Toujours visible pour Admin et Cashier */}
       <Tabs.Screen
         name="products"
         options={{
@@ -54,33 +55,38 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Package size={size} color={color} />,
         }}
       />
-      {isAdmin && (
-        <Tabs.Screen
-          name="users"
-          options={{
-            title: 'Utilisateurs',
-            tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
-          }}
-        />
-      )}
-      {isAdmin && (
-        <Tabs.Screen
-          name="reports"
-          options={{
-            title: 'Rapports',
-            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          }}
-        />
-      )}
-      {!isAdmin && (
-        <Tabs.Screen
-          name="history"
-          options={{
-            title: 'Historique',
-            tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
-          }}
-        />
-      )}
+
+      {/* 3. Utilisateurs - Visible SEULEMENT pour l'Admin, masqué sans crash pour le Cashier */}
+      <Tabs.Screen
+        name="users"
+        options={{
+          title: 'Utilisateurs',
+          href: isAdmin ? '/users' : null, // Si pas admin, l'onglet disparaît complètement sans chercher le fichier
+          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+        }}
+      />
+
+      {/* 4. Rapports - Visible SEULEMENT pour l'Admin */}
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: 'Rapports',
+          href: isAdmin ? '/reports' : null, // Masqué proprement si c'est le cashier
+          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+        }}
+      />
+
+      {/* 5. Historique - Visible SEULEMENT pour le Cashier */}
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: 'Historique',
+          href: !isAdmin ? '/history' : null, // Masqué proprement si c'est l'admin
+          tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
+        }}
+      />
+
+      {/* 6. Paramètres - Toujours visible */}
       <Tabs.Screen
         name="settings"
         options={{

@@ -14,7 +14,10 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
+  useWindowDimensions,
+  PixelRatio,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   Plus,
@@ -29,13 +32,24 @@ import { lightTheme, darkTheme } from '@/src/utils/theme';
 import { getProducts, createProduct, updateProduct, deleteProduct, updateStock } from '@/src/database/products';
 import { Product, ProductCategory } from '@/src/types';
 
-// Extraction propre pour éviter l'erreur de rendu de chaîne brute dans le JSX
 const FORM_CATEGORIES: ProductCategory[] = ['Plats', 'Boissons', 'Cocktails', 'Desserts'];
+
+// Helper pour les tailles responsives
+const scaleSize = (size: number, width: number) => {
+  const baseWidth = 375; // iPhone 12/13/14 base
+  return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
+};
+
+const scaleFont = (size: number) => {
+  return PixelRatio.roundToNearestPixel(size * PixelRatio.getFontScale());
+};
 
 export default function ProductsScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -189,25 +203,25 @@ export default function ProductsScreen() {
 
   const renderProduct = ({ item }: { item: Product }) => (
     <View style={[styles.productCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <View style={styles.productImagePlaceholder}>
-        <Text style={styles.productImageText}>{item.nom.charAt(0)}</Text>
+      <View style={[styles.productImagePlaceholder, { width: scaleSize(56, screenWidth), height: scaleSize(56, screenWidth) }]}>
+        <Text style={[styles.productImageText, { fontSize: scaleFont(20) }]}>{item.nom.charAt(0)}</Text>
       </View>
       <View style={styles.productDetails}>
-        <Text style={[styles.productName, { color: theme.text }]} numberOfLines={1}>
+        <Text style={[styles.productName, { color: theme.text, fontSize: scaleFont(15) }]} numberOfLines={1}>
           {item.nom}
         </Text>
-        <Text style={[styles.productCategory, { color: theme.textSecondary }]}>
+        <Text style={[styles.productCategory, { color: theme.textSecondary, fontSize: scaleFont(12) }]}>
           {item.categorie}
         </Text>
-        <Text style={[styles.productPrice, { color: theme.primary }]}>
+        <Text style={[styles.productPrice, { color: theme.primary, fontSize: scaleFont(14) }]}>
           {formatCurrency(item.prix)}
         </Text>
         <View style={styles.stockRow}>
-          <Text style={[styles.stockText, { color: item.stock <= 10 ? theme.error : theme.textSecondary }]}>
+          <Text style={[styles.stockText, { color: item.stock <= 10 ? theme.error : theme.textSecondary, fontSize: scaleFont(12) }]}>
             Stock: {item.stock}
           </Text>
           {!item.disponible && (
-            <Text style={[styles.unavailableBadge, { color: theme.error }]}>
+            <Text style={[styles.unavailableBadge, { color: theme.error, fontSize: scaleFont(11) }]}>
               Indisponible
             </Text>
           )}
@@ -215,56 +229,64 @@ export default function ProductsScreen() {
       </View>
       <View style={styles.productActions}>
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: theme.primary + '15' }]}
+          style={[styles.actionBtn, { backgroundColor: theme.primary + '15', width: scaleSize(40, screenWidth), height: scaleSize(40, screenWidth) }]}
           onPress={() => {
             setStockProduct(item);
             setStockType('in');
             setShowStockModal(true);
           }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Package size={16} color={theme.primary} />
+          <Package size={scaleSize(18, screenWidth)} color={theme.primary} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: theme.success + '15' }]}
+          style={[styles.actionBtn, { backgroundColor: theme.success + '15', width: scaleSize(40, screenWidth), height: scaleSize(40, screenWidth) }]}
           onPress={() => openForm(item)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Edit3 size={16} color={theme.success} />
+          <Edit3 size={scaleSize(18, screenWidth)} color={theme.success} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: theme.error + '15' }]}
+          style={[styles.actionBtn, { backgroundColor: theme.error + '15', width: scaleSize(40, screenWidth), height: scaleSize(40, screenWidth) }]}
           onPress={() => handleDelete(item)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Trash2 size={16} color={theme.error} />
+          <Trash2 size={scaleSize(18, screenWidth)} color={theme.error} />
         </TouchableOpacity>
       </View>
     </View>
   );
 
+  // Calcul de la hauteur max du modal selon l'écran
+  const modalMaxHeight = screenHeight < 600 ? '90%' : '80%';
+  const isSmallScreen = screenWidth < 360;
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Produits</Text>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingHorizontal: isSmallScreen ? 12 : 16, paddingTop: isSmallScreen ? 16 : 24 }]}>
+        <Text style={[styles.headerTitle, { color: theme.text, fontSize: scaleFont(22) }]}>Produits</Text>
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
+          style={[styles.addButton, { backgroundColor: theme.primary, width: scaleSize(44, screenWidth), height: scaleSize(44, screenWidth) }]}
           onPress={() => openForm()}
           activeOpacity={0.8}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Plus size={20} color={theme.white} />
+          <Plus size={scaleSize(20, screenWidth)} color={theme.white} />
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.searchContainer, { backgroundColor: theme.input, borderColor: theme.border }]}>
-        <Search size={20} color={theme.textSecondary} />
+      <View style={[styles.searchContainer, { backgroundColor: theme.input, borderColor: theme.border, marginHorizontal: isSmallScreen ? 12 : 16, height: scaleSize(44, screenWidth) }]}>
+        <Search size={scaleSize(20, screenWidth)} color={theme.textSecondary} />
         <TextInput
-          style={[styles.searchInput, { color: theme.text }]}
+          style={[styles.searchInput, { color: theme.text, fontSize: scaleFont(15) }]}
           placeholder="Rechercher..."
           placeholderTextColor={theme.placeholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <X size={18} color={theme.textSecondary} />
+          <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <X size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -282,22 +304,29 @@ export default function ProductsScreen() {
                 {
                   backgroundColor: selectedCategory === item ? theme.primary : theme.surface,
                   borderColor: selectedCategory === item ? theme.primary : theme.border,
+                  paddingHorizontal: isSmallScreen ? 12 : 16,
+                  paddingVertical: scaleSize(8, screenWidth),
+                  marginRight: 8,
                 },
               ]}
               onPress={() => setSelectedCategory(item)}
               activeOpacity={0.8}
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             >
               <Text
                 style={[
                   styles.categoryText,
-                  { color: selectedCategory === item ? theme.white : theme.textSecondary },
+                  { 
+                    color: selectedCategory === item ? theme.white : theme.textSecondary,
+                    fontSize: scaleFont(13),
+                  },
                 ]}
               >
                 {item === 'all' ? 'Tous' : item}
               </Text>
             </TouchableOpacity>
           )}
-          contentContainerStyle={styles.categoriesList}
+          contentContainerStyle={[styles.categoriesList, { paddingHorizontal: isSmallScreen ? 12 : 16 }]}
         />
       </View>
 
@@ -305,11 +334,11 @@ export default function ProductsScreen() {
         data={filteredProducts}
         renderItem={renderProduct}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.productsList}
+        contentContainerStyle={[styles.productsList, { paddingHorizontal: isSmallScreen ? 12 : 16 }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+          <View style={[styles.emptyContainer, { paddingVertical: screenHeight * 0.15 }]}>
+            <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: scaleFont(16) }]}>
               Aucun produit trouvé
             </Text>
           </View>
@@ -324,31 +353,45 @@ export default function ProductsScreen() {
         onRequestClose={closeForm}
       >
         <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidContainer}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 10 : 0}
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-              <View style={[styles.modalPanel, { backgroundColor: theme.background }]}>
+              <View style={[styles.modalPanel, { 
+                backgroundColor: theme.background,
+                maxHeight: modalMaxHeight,
+                borderTopLeftRadius: isSmallScreen ? 16 : 24,
+                borderTopRightRadius: isSmallScreen ? 16 : 24,
+                padding: isSmallScreen ? 16 : 20,
+              }]}>
                 
                 <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  <Text style={[styles.modalTitle, { color: theme.text, fontSize: scaleFont(18), flex: 1 }]} numberOfLines={1}>
                     {editingProduct ? 'Modifier' : 'Nouveau produit'}
                   </Text>
-                  <TouchableOpacity onPress={closeForm}>
-                    <X size={24} color={theme.text} />
+                  <TouchableOpacity onPress={closeForm} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <X size={scaleSize(24, screenWidth)} color={theme.text} />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView 
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
                   contentContainerStyle={styles.scrollForm}
                 >
                   <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { color: theme.text }]}>Nom *</Text>
+                    <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Nom *</Text>
                     <TextInput
-                      style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                      style={[styles.formInput, { 
+                        backgroundColor: theme.input, 
+                        color: theme.text, 
+                        borderColor: theme.border,
+                        fontSize: scaleFont(16),
+                        height: scaleSize(48, screenWidth),
+                      }]}
                       placeholder="Nom du produit"
                       placeholderTextColor={theme.placeholder}
                       value={formName}
@@ -357,8 +400,8 @@ export default function ProductsScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { color: theme.text }]}>Catégorie</Text>
-                    <View style={styles.categorySelector}>
+                    <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Catégorie</Text>
+                    <View style={[styles.categorySelector, { gap: isSmallScreen ? 6 : 8 }]}>
                       {FORM_CATEGORIES.map((cat) => (
                         <TouchableOpacity
                           key={cat}
@@ -367,11 +410,20 @@ export default function ProductsScreen() {
                             {
                               backgroundColor: formCategory === cat ? theme.primary : theme.input,
                               borderColor: formCategory === cat ? theme.primary : theme.border,
+                              paddingHorizontal: isSmallScreen ? 12 : 16,
+                              paddingVertical: scaleSize(10, screenWidth),
+                              borderRadius: 8,
+                              borderWidth: 1,
                             },
                           ]}
                           onPress={() => setFormCategory(cat)}
+                          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                         >
-                          <Text style={{ color: formCategory === cat ? theme.white : theme.text, fontSize: 13 }}>
+                          <Text style={{ 
+                            color: formCategory === cat ? theme.white : theme.text, 
+                            fontSize: scaleFont(13),
+                            fontWeight: '500'
+                          }}>
                             {cat}
                           </Text>
                         </TouchableOpacity>
@@ -380,10 +432,16 @@ export default function ProductsScreen() {
                   </View>
 
                   <View style={styles.formRow}>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={[styles.formLabel, { color: theme.text }]}>Prix *</Text>
+                    <View style={[styles.formGroup, { flex: 1, marginRight: isSmallScreen ? 8 : 12 }]}>
+                      <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Prix *</Text>
                       <TextInput
-                        style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                        style={[styles.formInput, { 
+                          backgroundColor: theme.input, 
+                          color: theme.text, 
+                          borderColor: theme.border,
+                          fontSize: scaleFont(16),
+                          height: scaleSize(48, screenWidth),
+                        }]}
                         placeholder="0"
                         placeholderTextColor={theme.placeholder}
                         value={formPrice}
@@ -391,10 +449,16 @@ export default function ProductsScreen() {
                         keyboardType="numeric"
                       />
                     </View>
-                    <View style={[styles.formGroup, { flex: 1, marginLeft: 12 }]}>
-                      <Text style={[styles.formLabel, { color: theme.text }]}>Stock</Text>
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                      <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Stock</Text>
                       <TextInput
-                        style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                        style={[styles.formInput, { 
+                          backgroundColor: theme.input, 
+                          color: theme.text, 
+                          borderColor: theme.border,
+                          fontSize: scaleFont(16),
+                          height: scaleSize(48, screenWidth),
+                        }]}
                         placeholder="0"
                         placeholderTextColor={theme.placeholder}
                         value={formStock}
@@ -405,24 +469,36 @@ export default function ProductsScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <View style={styles.checkboxRow}>
-                      <TouchableOpacity
-                        style={[styles.checkbox, { borderColor: theme.border, backgroundColor: formAvailable ? theme.primary : theme.input }]}
-                        onPress={() => setFormAvailable(!formAvailable)}
-                      >
-                        {formAvailable && <Text style={{ color: theme.white, fontSize: 12 }}>✓</Text>}
-                      </TouchableOpacity>
-                      <Text style={[styles.checkboxLabel, { color: theme.text }]}>Disponible</Text>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.checkboxRow}
+                      onPress={() => setFormAvailable(!formAvailable)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.checkbox, { 
+                        borderColor: theme.border, 
+                        backgroundColor: formAvailable ? theme.primary : theme.input,
+                        width: scaleSize(24, screenWidth),
+                        height: scaleSize(24, screenWidth),
+                      }]}>
+                        {formAvailable && <Text style={{ color: theme.white, fontSize: scaleFont(14), fontWeight: '700' }}>✓</Text>}
+                      </View>
+                      <Text style={[styles.checkboxLabel, { color: theme.text, fontSize: scaleFont(14), marginLeft: 10 }]}>
+                        Disponible
+                      </Text>
+                    </TouchableOpacity>
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                    style={[styles.saveButton, { 
+                      backgroundColor: theme.primary,
+                      height: scaleSize(52, screenWidth),
+                      marginTop: isSmallScreen ? 4 : 8,
+                    }]}
                     onPress={handleSave}
                     activeOpacity={0.8}
                   >
-                    <Save size={20} color={theme.white} />
-                    <Text style={[styles.saveButtonText, { color: theme.white }]}>Sauvegarder</Text>
+                    <Save size={scaleSize(20, screenWidth)} color={theme.white} />
+                    <Text style={[styles.saveButtonText, { color: theme.white, fontSize: scaleFont(16) }]}>Sauvegarder</Text>
                   </TouchableOpacity>
                 </ScrollView>
 
@@ -440,49 +516,63 @@ export default function ProductsScreen() {
         onRequestClose={() => setShowStockModal(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidContainer}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 10 : 0}
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-              <View style={[styles.modalPanel, { backgroundColor: theme.background }]}>
+              <View style={[styles.modalPanel, { 
+                backgroundColor: theme.background,
+                maxHeight: modalMaxHeight,
+                borderTopLeftRadius: isSmallScreen ? 16 : 24,
+                borderTopRightRadius: isSmallScreen ? 16 : 24,
+                padding: isSmallScreen ? 16 : 20,
+              }]}>
                 <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: theme.text }]} numberOfLines={1}>
+                  <Text style={[styles.modalTitle, { color: theme.text, fontSize: scaleFont(16), flex: 1 }]} numberOfLines={1}>
                     Stock: {stockProduct?.nom}
                   </Text>
-                  <TouchableOpacity onPress={() => setShowStockModal(false)}>
-                    <X size={24} color={theme.text} />
+                  <TouchableOpacity onPress={() => setShowStockModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <X size={scaleSize(24, screenWidth)} color={theme.text} />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView 
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
                   contentContainerStyle={styles.scrollForm}
                 >
                   <View style={styles.stockCurrent}>
-                    <Text style={[styles.stockCurrentLabel, { color: theme.textSecondary }]}>
+                    <Text style={[styles.stockCurrentLabel, { color: theme.textSecondary, fontSize: scaleFont(14) }]}>
                       Stock actuel
                     </Text>
-                    <Text style={[styles.stockCurrentValue, { color: theme.text }]}>
+                    <Text style={[styles.stockCurrentValue, { color: theme.text, fontSize: scaleFont(28) }]}>
                       {stockProduct?.stock || 0}
                     </Text>
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { color: theme.text }]}>Type</Text>
-                    <View style={styles.typeSelector}>
+                    <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Type</Text>
+                    <View style={[styles.typeSelector, { gap: isSmallScreen ? 8 : 12 }]}>
                       <TouchableOpacity
                         style={[
                           styles.typeOption,
                           {
                             backgroundColor: stockType === 'in' ? theme.success : theme.input,
                             borderColor: stockType === 'in' ? theme.success : theme.border,
+                            paddingVertical: scaleSize(12, screenWidth),
                           },
                         ]}
                         onPress={() => setStockType('in')}
+                        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                       >
-                        <Text style={{ color: stockType === 'in' ? theme.white : theme.text, fontWeight: '600' }}>
+                        <Text style={{ 
+                          color: stockType === 'in' ? theme.white : theme.text, 
+                          fontWeight: '600',
+                          fontSize: scaleFont(14),
+                        }}>
                           Entrée
                         </Text>
                       </TouchableOpacity>
@@ -492,11 +582,17 @@ export default function ProductsScreen() {
                           {
                             backgroundColor: stockType === 'out' ? theme.error : theme.input,
                             borderColor: stockType === 'out' ? theme.error : theme.border,
+                            paddingVertical: scaleSize(12, screenWidth),
                           },
                         ]}
                         onPress={() => setStockType('out')}
+                        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                       >
-                        <Text style={{ color: stockType === 'out' ? theme.white : theme.text, fontWeight: '600' }}>
+                        <Text style={{ 
+                          color: stockType === 'out' ? theme.white : theme.text, 
+                          fontWeight: '600',
+                          fontSize: scaleFont(14),
+                        }}>
                           Sortie
                         </Text>
                       </TouchableOpacity>
@@ -504,9 +600,15 @@ export default function ProductsScreen() {
                   </View>
 
                   <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { color: theme.text }]}>Quantité</Text>
+                    <Text style={[styles.formLabel, { color: theme.text, fontSize: scaleFont(14) }]}>Quantité</Text>
                     <TextInput
-                      style={[styles.formInput, { backgroundColor: theme.input, color: theme.text, borderColor: theme.border }]}
+                      style={[styles.formInput, { 
+                        backgroundColor: theme.input, 
+                        color: theme.text, 
+                        borderColor: theme.border,
+                        fontSize: scaleFont(16),
+                        height: scaleSize(48, screenWidth),
+                      }]}
                       placeholder="0"
                       placeholderTextColor={theme.placeholder}
                       value={stockQty}
@@ -516,11 +618,14 @@ export default function ProductsScreen() {
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.saveButton, { backgroundColor: stockType === 'in' ? theme.success : theme.error }]}
+                    style={[styles.saveButton, { 
+                      backgroundColor: stockType === 'in' ? theme.success : theme.error,
+                      height: scaleSize(52, screenWidth),
+                    }]}
                     onPress={handleStockUpdate}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.saveButtonText, { color: theme.white }]}>Valider</Text>
+                    <Text style={[styles.saveButtonText, { color: theme.white, fontSize: scaleFont(16) }]}>Valider</Text>
                   </TouchableOpacity>
                 </ScrollView>
               </View>
@@ -540,16 +645,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    paddingTop: 24,
+    paddingBottom: 8,
   },
   headerTitle: {
-    fontSize: 24,
     fontWeight: '700',
   },
   addButton: {
-    width: 44,
-    height: 44,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -557,67 +658,56 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
-    height: 44,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
     fontSize: 15,
   },
   categoriesContainer: {
     marginBottom: 8,
   },
   categoriesList: {
-    paddingHorizontal: 16,
     gap: 8,
   },
   categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    marginRight: 8,
   },
   categoryText: {
-    fontSize: 13,
     fontWeight: '600',
   },
   productsList: {
-    padding: 16,
     gap: 12,
+    paddingBottom: 20,
   },
   productCard: {
     flexDirection: 'row',
     borderRadius: 12,
     borderWidth: 1,
     padding: 12,
-    marginBottom: 8,
     alignItems: 'center',
+    gap: 12,
   },
   productImagePlaceholder: {
-    width: 56,
-    height: 56,
     borderRadius: 10,
     backgroundColor: '#C2185B',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   productImageText: {
-    fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   productDetails: {
     flex: 1,
+    minWidth: 0, // Permet le text truncation
   },
   productName: {
-    fontSize: 15,
     fontWeight: '600',
     marginBottom: 2,
   },
@@ -626,7 +716,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   productPrice: {
-    fontSize: 14,
     fontWeight: '700',
   },
   stockRow: {
@@ -647,14 +736,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   actionBtn: {
-    width: 36,
-    height: 36,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyContainer: {
-    paddingVertical: 60,
     alignItems: 'center',
   },
   emptyText: {
@@ -668,10 +754,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalPanel: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '80%', 
+    paddingBottom: 20,
   },
   scrollForm: {
     paddingBottom: 24,
@@ -683,21 +766,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
     fontWeight: '700',
-    flex: 1,
-    marginRight: 10,
   },
   formGroup: {
     marginBottom: 16,
   },
   formLabel: {
-    fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
   },
   formInput: {
-    height: 48,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 16,
@@ -709,22 +787,15 @@ const styles = StyleSheet.create({
   categorySelector: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
   },
   categoryOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
     borderWidth: 1,
   },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
   },
   checkbox: {
-    width: 24,
-    height: 24,
     borderRadius: 6,
     borderWidth: 1,
     alignItems: 'center',
@@ -738,12 +809,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 52,
     borderRadius: 12,
-    marginTop: 8,
   },
   saveButtonText: {
-    fontSize: 16,
     fontWeight: '700',
   },
   stockCurrent: {
@@ -754,17 +822,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   stockCurrentValue: {
-    fontSize: 32,
     fontWeight: '700',
   },
   typeSelector: {
     flexDirection: 'row',
-    gap: 12,
     marginBottom: 4,
   },
   typeOption: {
     flex: 1,
-    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',

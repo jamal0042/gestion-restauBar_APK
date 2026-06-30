@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useColorScheme, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/src/store/authStore';
 import {
   LayoutDashboard,
@@ -9,27 +10,13 @@ import {
   BarChart3,
   Settings,
   Receipt,
+  FileText,
+  TrendingUp,
 } from 'lucide-react-native';
 
-// Constantes de configuration
-const TAB_BAR_CONFIG = {
-  ios: { height: 88, paddingBottom: 28 },
-  android: { height: 72, paddingBottom: 12 },
-};
-
 const COLORS = {
-  light: {
-    background: '#FFFFFF',
-    border: '#E0E0E0',
-    active: '#C2185B',
-    inactive: '#757575',
-  },
-  dark: {
-    background: '#2e2e2e',
-    border: '#424242',
-    active: '#C2185B',
-    inactive: '#9E9E9E',
-  },
+  light: { background: '#FFFFFF', border: '#E0E0E0', active: '#C2185B', inactive: '#757575' },
+  dark: { background: '#2e2e2e', border: '#424242', active: '#C2185B', inactive: '#9E9E9E' },
 };
 
 export default function TabsLayout() {
@@ -38,7 +25,14 @@ export default function TabsLayout() {
   const isDark = colorScheme === 'dark';
   const isAdmin = user?.role === 'admin';
   const currentColors = isDark ? COLORS.dark : COLORS.light;
-  const platformConfig = Platform.OS === 'ios' ? TAB_BAR_CONFIG.ios : TAB_BAR_CONFIG.android;
+  const insets = useSafeAreaInsets();
+
+  // Barre remontée : paddingBottom minimal pour être flexible
+  const tabBarPaddingBottom = Platform.select({
+    ios: Math.max(insets.bottom, 8),
+    android: 4,
+    default: 4,
+  });
 
   const screenOptions = {
     headerShown: false,
@@ -46,66 +40,60 @@ export default function TabsLayout() {
       backgroundColor: currentColors.background,
       borderTopColor: currentColors.border,
       borderTopWidth: 1,
-      height: platformConfig.height,
-      paddingTop: 12,
-      paddingBottom: platformConfig.paddingBottom,
+      height: Platform.OS === 'ios' ? 80 : 64,
+      paddingTop: 8,
+      paddingBottom: tabBarPaddingBottom,
     },
     tabBarActiveTintColor: currentColors.active,
     tabBarInactiveTintColor: currentColors.inactive,
     tabBarLabelStyle: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '500' as const,
-      marginTop: 4,
+      marginTop: 2,
     },
   };
 
-  const adminTabs = [
+  const tabs = [
+    // Onglet principal : Dashboard (admin) ou Ventes (caissier)
     {
-      name: 'index' as const,
-      title: 'Dashboard',
-      icon: LayoutDashboard,
+      name: 'index',
+      title: isAdmin ? 'Dashboard' : 'Ventes',
+      icon: isAdmin ? LayoutDashboard : Receipt,
     },
+    // Produits (pour tous)
     {
-      name: 'users' as const,
-      title: 'Utilisateurs',
-      icon: Users,
-    },
-    {
-      name: 'reports' as const,
-      title: 'Rapports',
-      icon: BarChart3,
-    },
-  ];
-
-  const cashierTabs = [
-    {
-      name: 'index' as const,
-      title: 'Ventes',
-      icon: Receipt,
-    },
-    {
-      name: 'history' as const,
-      title: 'Historique',
-      icon: BarChart3,
-    },
-  ];
-
-  const commonTabs = [
-    {
-      name: 'products' as const,
+      name: 'products',
       title: 'Produits',
       icon: Package,
     },
+    // Utilisateurs (admin uniquement)
+    ...(isAdmin
+      ? [
+          {
+            name: 'users',
+            title: 'Utilisateurs',
+            icon: Users, // icône personne, pas de triangle
+          },
+          {
+            name: 'reports',
+            title: 'Rapports',
+            icon: BarChart3, // icône graphique, pas de triangle
+          },
+        ]
+      : [
+          // Historique (caissier uniquement)
+          {
+            name: 'history',
+            title: 'Historique',
+            icon: TrendingUp, // icône tendance, pas de triangle
+          },
+        ]),
+    // Paramètres (pour tous)
     {
-      name: 'settings' as const,
+      name: 'settings',
       title: 'Paramètres',
       icon: Settings,
     },
-  ];
-
-  const tabs = [
-    ...(isAdmin ? adminTabs : cashierTabs),
-    ...commonTabs,
   ];
 
   return (
@@ -116,9 +104,7 @@ export default function TabsLayout() {
           name={tab.name}
           options={{
             title: tab.title,
-            tabBarIcon: ({ color, size }) => (
-              <tab.icon size={size} color={color} />
-            ),
+            tabBarIcon: ({ color, size }) => <tab.icon size={size} color={color} />,
           }}
         />
       ))}

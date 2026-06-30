@@ -18,6 +18,7 @@ export default function TabsLayout() {
           backgroundColor: isDark ? '#212121' : '#FFFFFF',
           borderTopColor: isDark ? '#424242' : '#E0E0E0',
           borderTopWidth: 1,
+          // Configuration de hauteur adaptative pour éviter les chevauchements
           height: Platform.OS === 'ios' ? 88 : 72,
           paddingTop: 12,
           paddingBottom: Platform.OS === 'ios' ? 28 : 12,
@@ -31,7 +32,7 @@ export default function TabsLayout() {
         },
       }}
     >
-      {/* Écran d'accueil dynamique (Dashboard ou Ventes) */}
+      {/* 1. Écran d'accueil dynamique (Dashboard pour Admin, Ventes pour Serveur/User) */}
       <Tabs.Screen
         name="index"
         options={{
@@ -42,7 +43,7 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Écran Produits commun */}
+      {/* 2. Écran Produits - Commun à tout le monde */}
       <Tabs.Screen
         name="products"
         options={{
@@ -51,37 +52,37 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Écran Utilisateurs - Masqué si pas Admin */}
+      {/* 3. Écran Utilisateurs - Visible uniquement par l'Admin */}
       <Tabs.Screen
         name="users"
         options={{
           title: 'Utilisateurs',
-          href: isAdmin ? '/users' : null, // Cache l'onglet proprement sans casser Expo Router
+          href: isAdmin ? 'users' : undefined,
           tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
         }}
       />
 
-      {/* Écran Rapports (Admin) */}
+      {/* 4. Écran Rapports - Visible uniquement par l'Admin */}
       <Tabs.Screen
         name="reports"
         options={{
           title: 'Rapports',
-          href: isAdmin ? '/reports' : null,
+          href: isAdmin ? 'reports' : undefined,
           tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
         }}
       />
 
-      {/* Écran Historique (User classique) */}
+      {/* 5. Écran Historique - Visible uniquement par les non-Admins */}
       <Tabs.Screen
         name="history"
         options={{
           title: 'Historique',
-          href: !isAdmin ? '/history' : null,
+          href: !isAdmin ? 'history' : undefined,
           tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
         }}
       />
 
-      {/* Écran Paramètres commun */}
+      {/* 6. Écran Paramètres - Commun à tout le monde */}
       <Tabs.Screen
         name="settings"
         options={{

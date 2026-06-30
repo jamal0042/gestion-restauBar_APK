@@ -7,8 +7,14 @@ import {
   useColorScheme,
   FlatList,
   TextInput,
-  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Modal,
+  ScrollView,
+  useWindowDimensions,
+  PixelRatio,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   Search,
@@ -26,13 +32,26 @@ import { getProducts } from '@/src/database';
 import { Product, CartItem } from '@/src/types';
 import { useCartStore } from '@/src/store/cartStore';
 
-const { width } = Dimensions.get('window');
+// Helpers responsifs
+const scaleSize = (size: number, width: number) => {
+  const baseWidth = 375;
+  return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
+};
+
+const scaleFont = (size: number) => {
+  return PixelRatio.roundToNearestPixel(size * PixelRatio.getFontScale());
+};
 
 export default function CashierDashboard() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { items, addItem, removeItem, updateQuantity, getTotal, clearCart } = useCartStore();
+
+  const isSmallScreen = screenWidth < 360;
+  const horizontalPadding = isSmallScreen ? 12 : 16;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -42,6 +61,10 @@ export default function CashierDashboard() {
   const [showPayment, setShowPayment] = useState(false);
 
   const categories = ['all', 'Plats', 'Boissons', 'Cocktails', 'Desserts'];
+
+  // Calcul dynamique de la largeur des cartes produit (2 colonnes)
+  const productCardWidth = (screenWidth - (horizontalPadding * 2) - 12) / 2;
+  const modalMaxHeight = screenHeight < 600 ? '92%' : '85%';
 
   const loadProducts = useCallback(async () => {
     const all = await getProducts();
@@ -77,81 +100,114 @@ export default function CashierDashboard() {
   const renderProduct = ({ item }: { item: Product }) => {
     const cartItem = items.find(i => i.product.id === item.id);
     const inCart = cartItem ? cartItem.quantite : 0;
+    const imgHeight = scaleSize(isSmallScreen ? 64 : 80, screenWidth);
 
     return (
       <TouchableOpacity
-        style={[styles.productCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+        style={[
+          styles.productCard,
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+            width: productCardWidth,
+            padding: scaleSize(10, screenWidth),
+          },
+        ]}
         onPress={() => addItem(item)}
         activeOpacity={0.8}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
       >
-        <View style={styles.productImagePlaceholder}>
-          <Text style={styles.productImageText}>{item.nom.charAt(0)}</Text>
+        <View style={[styles.productImagePlaceholder, { height: imgHeight, borderRadius: scaleSize(8, screenWidth) }]}>
+          <Text style={[styles.productImageText, { fontSize: scaleFont(24) }]}>
+            {item.nom.charAt(0)}
+          </Text>
         </View>
         <View style={styles.productInfo}>
-          <Text style={[styles.productName, { color: theme.text }]} numberOfLines={1}>
+          <Text style={[styles.productName, { color: theme.text, fontSize: scaleFont(13) }]} numberOfLines={1}>
             {item.nom}
           </Text>
-          <Text style={[styles.productCategory, { color: theme.textSecondary }]}>
+          <Text style={[styles.productCategory, { color: theme.textSecondary, fontSize: scaleFont(11) }]}>
             {item.categorie}
           </Text>
-          <Text style={[styles.productPrice, { color: theme.primary }]}>
+          <Text style={[styles.productPrice, { color: theme.primary, fontSize: scaleFont(14) }]} numberOfLines={1} adjustsFontSizeToFit>
             {formatCurrency(item.prix)}
           </Text>
         </View>
         {inCart > 0 && (
           <View style={[styles.badge, { backgroundColor: theme.primary }]}>
-            <Text style={[styles.badgeText, { color: theme.white }]}>{inCart}</Text>
+            <Text style={[styles.badgeText, { color: theme.white, fontSize: scaleFont(11) }]}>
+              {inCart}
+            </Text>
           </View>
         )}
       </TouchableOpacity>
     );
   };
 
-  const renderCartItem = ({ item }: { item: CartItem }) => (
-    <View style={[styles.cartItem, { borderBottomColor: theme.border }]}>
-      <View style={styles.cartItemInfo}>
-        <Text style={[styles.cartItemName, { color: theme.text }]}>{item.product.nom}</Text>
-        <Text style={[styles.cartItemPrice, { color: theme.textSecondary }]}>
-          {formatCurrency(item.product.prix)} x {item.quantite}
-        </Text>
+  const renderCartItem = ({ item }: { item: CartItem }) => {
+    const btnSize = scaleSize(32, screenWidth);
+    return (
+      <View style={[styles.cartItem, { borderBottomColor: theme.border }]}>
+        <View style={styles.cartItemInfo}>
+          <Text style={[styles.cartItemName, { color: theme.text, fontSize: scaleFont(14) }]} numberOfLines={1}>
+            {item.product.nom}
+          </Text>
+          <Text style={[styles.cartItemPrice, { color: theme.textSecondary, fontSize: scaleFont(12) }]}>
+            {formatCurrency(item.product.prix)} x {item.quantite}
+          </Text>
+        </View>
+        <View style={styles.cartItemActions}>
+          <TouchableOpacity
+            style={[styles.qtyButton, { backgroundColor: theme.surface, borderColor: theme.border, width: btnSize, height: btnSize }]}
+            onPress={() => updateQuantity(item.product.id, item.quantite - 1)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Minus size={scaleSize(14, screenWidth)} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.qtyText, { color: theme.text, fontSize: scaleFont(14), minWidth: scaleSize(24, screenWidth) }]}>
+            {item.quantite}
+          </Text>
+          <TouchableOpacity
+            style={[styles.qtyButton, { backgroundColor: theme.surface, borderColor: theme.border, width: btnSize, height: btnSize }]}
+            onPress={() => updateQuantity(item.product.id, item.quantite + 1)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Plus size={scaleSize(14, screenWidth)} color={theme.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.removeButton, { backgroundColor: theme.error + '15', width: btnSize, height: btnSize }]}
+            onPress={() => removeItem(item.product.id)}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Trash2 size={scaleSize(14, screenWidth)} color={theme.error} />
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.cartItemActions}>
-        <TouchableOpacity
-          style={[styles.qtyButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          onPress={() => updateQuantity(item.product.id, item.quantite - 1)}
-        >
-          <Minus size={16} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.qtyText, { color: theme.text }]}>{item.quantite}</Text>
-        <TouchableOpacity
-          style={[styles.qtyButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          onPress={() => updateQuantity(item.product.id, item.quantite + 1)}
-        >
-          <Plus size={16} color={theme.text} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.removeButton, { backgroundColor: theme.error + '15' }]}
-          onPress={() => removeItem(item.product.id)}
-        >
-          <Trash2 size={16} color={theme.error} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Nouvelle vente</Text>
+      <View style={[styles.header, { paddingHorizontal: horizontalPadding, paddingTop: insets.top + 12 }]}>
+        <Text style={[styles.headerTitle, { color: theme.text, fontSize: scaleFont(22) }]}>Nouvelle vente</Text>
         <TouchableOpacity
-          style={[styles.cartButton, { backgroundColor: theme.primary }]}
+          style={[styles.cartButton, {
+            backgroundColor: theme.primary,
+            width: scaleSize(46, screenWidth),
+            height: scaleSize(46, screenWidth),
+            borderRadius: scaleSize(12, screenWidth),
+          }]}
           onPress={() => setShowCart(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ShoppingCart size={20} color={theme.white} />
+          <ShoppingCart size={scaleSize(20, screenWidth)} color={theme.white} />
           {items.length > 0 && (
             <View style={[styles.cartBadge, { backgroundColor: theme.white }]}>
-              <Text style={[styles.cartBadgeText, { color: theme.primary }]}>
+              <Text style={[styles.cartBadgeText, { color: theme.primary, fontSize: scaleFont(10) }]}>
                 {items.reduce((s, i) => s + i.quantite, 0)}
               </Text>
             </View>
@@ -160,18 +216,23 @@ export default function CashierDashboard() {
       </View>
 
       {/* Search */}
-      <View style={[styles.searchContainer, { backgroundColor: theme.input, borderColor: theme.border }]}>
-        <Search size={20} color={theme.textSecondary} />
+      <View style={[styles.searchContainer, {
+        backgroundColor: theme.input,
+        borderColor: theme.border,
+        marginHorizontal: horizontalPadding,
+        height: scaleSize(44, screenWidth),
+      }]}>
+        <Search size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
         <TextInput
-          style={[styles.searchInput, { color: theme.text }]}
+          style={[styles.searchInput, { color: theme.text, fontSize: scaleFont(14) }]}
           placeholder="Rechercher un produit..."
           placeholderTextColor={theme.placeholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <X size={18} color={theme.textSecondary} />
+          <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <X size={scaleSize(18, screenWidth)} color={theme.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -190,22 +251,25 @@ export default function CashierDashboard() {
                 {
                   backgroundColor: selectedCategory === item ? theme.primary : theme.surface,
                   borderColor: selectedCategory === item ? theme.primary : theme.border,
+                  paddingHorizontal: isSmallScreen ? 12 : 16,
+                  paddingVertical: scaleSize(8, screenWidth),
                 },
               ]}
               onPress={() => setSelectedCategory(item)}
               activeOpacity={0.8}
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             >
               <Text
                 style={[
                   styles.categoryText,
-                  { color: selectedCategory === item ? theme.white : theme.textSecondary },
+                  { color: selectedCategory === item ? theme.white : theme.textSecondary, fontSize: scaleFont(12) },
                 ]}
               >
                 {item === 'all' ? 'Tous' : item}
               </Text>
             </TouchableOpacity>
           )}
-          contentContainerStyle={styles.categoriesList}
+          contentContainerStyle={[styles.categoriesList, { paddingHorizontal: horizontalPadding }]}
         />
       </View>
 
@@ -215,11 +279,13 @@ export default function CashierDashboard() {
         renderItem={renderProduct}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        contentContainerStyle={styles.productsList}
+        contentContainerStyle={[styles.productsList, { paddingHorizontal: horizontalPadding }]}
+        columnWrapperStyle={styles.productRow}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+          <View style={[styles.emptyContainer, { paddingVertical: screenHeight * 0.15 }]}>
+            <Text style={[styles.emptyText, { color: theme.textSecondary, fontSize: scaleFont(15) }]}>
               Aucun produit trouvé
             </Text>
           </View>
@@ -227,20 +293,31 @@ export default function CashierDashboard() {
       />
 
       {/* Cart Modal */}
-      {showCart && (
-        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-          <View style={[styles.cartPanel, { backgroundColor: theme.background }]}>
+      <Modal visible={showCart} animationType="slide" transparent onRequestClose={() => setShowCart(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        >
+          <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowCart(false)} />
+          <View style={[styles.cartPanel, {
+            backgroundColor: theme.background,
+            maxHeight: modalMaxHeight,
+            borderTopLeftRadius: isSmallScreen ? 16 : 24,
+            borderTopRightRadius: isSmallScreen ? 16 : 24,
+            padding: isSmallScreen ? 16 : 20,
+          }]}>
             <View style={styles.cartHeader}>
-              <Text style={[styles.cartTitle, { color: theme.text }]}>Panier</Text>
-              <TouchableOpacity onPress={() => setShowCart(false)}>
-                <X size={24} color={theme.text} />
+              <Text style={[styles.cartTitle, { color: theme.text, fontSize: scaleFont(18) }]}>Panier</Text>
+              <TouchableOpacity onPress={() => setShowCart(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={scaleSize(24, screenWidth)} color={theme.text} />
               </TouchableOpacity>
             </View>
 
             {items.length === 0 ? (
               <View style={styles.emptyCart}>
-                <ShoppingCart size={48} color={theme.textSecondary} />
-                <Text style={[styles.emptyCartText, { color: theme.textSecondary }]}>
+                <ShoppingCart size={scaleSize(48, screenWidth)} color={theme.textSecondary} />
+                <Text style={[styles.emptyCartText, { color: theme.textSecondary, fontSize: scaleFont(15) }]}>
                   Votre panier est vide
                 </Text>
               </View>
@@ -251,23 +328,25 @@ export default function CashierDashboard() {
                   renderItem={renderCartItem}
                   keyExtractor={(item) => item.product.id}
                   contentContainerStyle={styles.cartList}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
                 />
                 <View style={[styles.cartFooter, { borderTopColor: theme.border }]}>
                   <View style={styles.totalRow}>
-                    <Text style={[styles.totalLabel, { color: theme.text }]}>Total</Text>
-                    <Text style={[styles.totalValue, { color: theme.primary }]}>
+                    <Text style={[styles.totalLabel, { color: theme.text, fontSize: scaleFont(17) }]}>Total</Text>
+                    <Text style={[styles.totalValue, { color: theme.primary, fontSize: scaleFont(22) }]} numberOfLines={1} adjustsFontSizeToFit>
                       {formatCurrency(getTotal())}
                     </Text>
                   </View>
                   <TouchableOpacity
-                    style={[styles.paymentButton, { backgroundColor: theme.primary }]}
+                    style={[styles.paymentButton, { backgroundColor: theme.primary, height: scaleSize(52, screenWidth) }]}
                     onPress={() => {
                       setShowCart(false);
                       setShowPayment(true);
                     }}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.paymentButtonText, { color: theme.white }]}>
+                    <Text style={[styles.paymentButtonText, { color: theme.white, fontSize: scaleFont(16) }]}>
                       Payer
                     </Text>
                   </TouchableOpacity>
@@ -275,77 +354,72 @@ export default function CashierDashboard() {
               </>
             )}
           </View>
-        </View>
-      )}
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Payment Modal */}
-      {showPayment && (
-        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-          <View style={[styles.paymentPanel, { backgroundColor: theme.background }]}>
+      <Modal visible={showPayment} animationType="fade" transparent onRequestClose={() => setShowPayment(false)}>
+        <View style={styles.modalContainer}>
+          <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setShowPayment(false)} />
+          <View style={[styles.paymentPanel, {
+            backgroundColor: theme.background,
+            borderTopLeftRadius: isSmallScreen ? 16 : 24,
+            borderTopRightRadius: isSmallScreen ? 16 : 24,
+            padding: isSmallScreen ? 16 : 20,
+          }]}>
             <View style={styles.cartHeader}>
-              <Text style={[styles.cartTitle, { color: theme.text }]}>Paiement</Text>
-              <TouchableOpacity onPress={() => setShowPayment(false)}>
-                <X size={24} color={theme.text} />
+              <Text style={[styles.cartTitle, { color: theme.text, fontSize: scaleFont(18) }]}>Paiement</Text>
+              <TouchableOpacity onPress={() => setShowPayment(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={scaleSize(24, screenWidth)} color={theme.text} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.paymentTotal}>
-              <Text style={[styles.paymentTotalLabel, { color: theme.textSecondary }]}>
+              <Text style={[styles.paymentTotalLabel, { color: theme.textSecondary, fontSize: scaleFont(15) }]}>
                 Total à payer
               </Text>
-              <Text style={[styles.paymentTotalValue, { color: theme.primary }]}>
+              <Text style={[styles.paymentTotalValue, { color: theme.primary, fontSize: scaleFont(28) }]} numberOfLines={1} adjustsFontSizeToFit>
                 {formatCurrency(getTotal())}
               </Text>
             </View>
 
-            <View style={styles.paymentMethods}>
-              <TouchableOpacity
-                style={[styles.paymentMethod, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={() => {
-                  setShowPayment(false);
-                  router.push({
-                    pathname: '/tabs/invoice',
-                    params: { method: 'cash', total: getTotal() },
-                  } as any);
-                }}
-                activeOpacity={0.8}
-              >
-                <Banknote size={28} color={theme.success} />
-                <Text style={[styles.paymentMethodText, { color: theme.text }]}>Espèces</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.paymentMethod, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={() => {
-                  setShowPayment(false);
-                  router.push({
-                    pathname: '/tabs/invoice',
-                    params: { method: 'card', total: getTotal() },
-                  } as any);
-                }}
-                activeOpacity={0.8}
-              >
-                <CreditCard size={28} color={theme.primary} />
-                <Text style={[styles.paymentMethodText, { color: theme.text }]}>Carte</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.paymentMethod, { backgroundColor: theme.card, borderColor: theme.border }]}
-                onPress={() => {
-                  setShowPayment(false);
-                  router.push({
-                    pathname: '/tabs/invoice',
-                    params: { method: 'mobile_money', total: getTotal() },
-                  } as any);
-                }}
-                activeOpacity={0.8}
-              >
-                <Smartphone size={28} color={theme.warning} />
-                <Text style={[styles.paymentMethodText, { color: theme.text }]}>Mobile Money</Text>
-              </TouchableOpacity>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={[styles.paymentMethods, { gap: isSmallScreen ? 10 : 12 }]}>
+                {[
+                  { method: 'cash', label: 'Espèces', icon: Banknote, color: theme.success },
+                  { method: 'card', label: 'Carte', icon: CreditCard, color: theme.primary },
+                  { method: 'mobile_money', label: 'Mobile Money', icon: Smartphone, color: theme.warning },
+                ].map((pm) => (
+                  <TouchableOpacity
+                    key={pm.method}
+                    style={[styles.paymentMethod, {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                      padding: scaleSize(14, screenWidth),
+                      gap: scaleSize(14, screenWidth),
+                    }]}
+                    onPress={() => {
+                      setShowPayment(false);
+                      router.push({
+                        pathname: '/tabs/invoice',
+                        params: { method: pm.method, total: getTotal() },
+                      } as any);
+                    }}
+                    activeOpacity={0.8}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                  >
+                    <pm.icon size={scaleSize(26, screenWidth)} color={pm.color} />
+                    <Text style={[styles.paymentMethodText, { color: theme.text, fontSize: scaleFont(15) }]}>
+                      {pm.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         </View>
-      )}
-    </View>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -357,20 +431,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    paddingTop: 24,
+    paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 24,
     fontWeight: '700',
   },
   cartButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   cartBadge: {
     position: 'absolute',
@@ -381,67 +449,56 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 4,
   },
   cartBadgeText: {
-    fontSize: 11,
     fontWeight: '700',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
-    height: 44,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: 15,
+    paddingVertical: 0,
   },
   categoriesContainer: {
     marginBottom: 8,
   },
   categoriesList: {
-    paddingHorizontal: 16,
     gap: 8,
   },
   categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    marginRight: 8,
   },
   categoryText: {
-    fontSize: 13,
     fontWeight: '600',
   },
   productsList: {
-    padding: 12,
+    paddingBottom: 20,
+  },
+  productRow: {
     gap: 12,
   },
   productCard: {
-    width: (width - 48) / 2,
     borderRadius: 12,
     borderWidth: 1,
-    padding: 12,
-    margin: 4,
     position: 'relative',
   },
   productImagePlaceholder: {
     width: '100%',
-    height: 80,
-    borderRadius: 8,
     backgroundColor: '#C2185B',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   productImageText: {
-    fontSize: 28,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -449,16 +506,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   productName: {
-    fontSize: 14,
     fontWeight: '600',
     marginBottom: 2,
   },
   productCategory: {
-    fontSize: 12,
     marginBottom: 4,
   },
   productPrice: {
-    fontSize: 15,
     fontWeight: '700',
   },
   badge: {
@@ -472,30 +526,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: {
-    fontSize: 12,
     fontWeight: '700',
   },
   emptyContainer: {
-    paddingVertical: 60,
     alignItems: 'center',
   },
-  emptyText: {
-    fontSize: 16,
+  emptyText: {},
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'flex-end',
-    zIndex: 100,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   cartPanel: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
-    padding: 20,
+    paddingBottom: 20,
   },
   cartHeader: {
     flexDirection: 'row',
@@ -504,7 +550,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cartTitle: {
-    fontSize: 20,
     fontWeight: '700',
   },
   cartList: {
@@ -515,47 +560,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
   cartItemInfo: {
     flex: 1,
+    minWidth: 0,
   },
   cartItemName: {
-    fontSize: 14,
     fontWeight: '600',
     marginBottom: 2,
   },
-  cartItemPrice: {
-    fontSize: 12,
-  },
+  cartItemPrice: {},
   cartItemActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   qtyButton: {
-    width: 32,
-    height: 32,
     borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qtyText: {
-    fontSize: 14,
     fontWeight: '700',
-    minWidth: 24,
     textAlign: 'center',
   },
   removeButton: {
-    width: 32,
-    height: 32,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cartFooter: {
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: 16,
   },
   totalRow: {
@@ -565,21 +603,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   totalLabel: {
-    fontSize: 18,
     fontWeight: '600',
   },
   totalValue: {
-    fontSize: 22,
     fontWeight: '700',
   },
   paymentButton: {
-    height: 52,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   paymentButtonText: {
-    fontSize: 16,
     fontWeight: '700',
   },
   emptyCart: {
@@ -587,39 +621,29 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyCartText: {
-    fontSize: 16,
     marginTop: 12,
   },
   paymentPanel: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
+    paddingBottom: 20,
   },
   paymentTotal: {
     alignItems: 'center',
     marginBottom: 24,
   },
   paymentTotalLabel: {
-    fontSize: 16,
     marginBottom: 8,
   },
   paymentTotalValue: {
-    fontSize: 32,
     fontWeight: '700',
   },
-  paymentMethods: {
-    gap: 12,
-  },
+  paymentMethods: {},
   paymentMethod: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 16,
   },
   paymentMethodText: {
-    fontSize: 16,
     fontWeight: '600',
   },
 });

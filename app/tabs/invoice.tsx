@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   PixelRatio,
+  Image, // ✅ Ajout de l'import Image
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,6 +21,9 @@ import { useAuthStore } from '@/src/store/authStore';
 import { createOrder } from '@/src/database/orders';
 import { getSettings } from '@/src/database/settings';
 import { Order, OrderItem } from '@/src/types';
+
+// ✅ Import de ton icône - ADAPTE LE CHEMIN selon ton projet
+const appIcon = require('@/assets/images/icon.png');
 
 // Helpers responsifs
 const scaleSize = (size: number, width: number) => {
@@ -140,7 +144,7 @@ export default function InvoiceScreen() {
     router.replace('/tabs');
   };
 
-  // Taille dynamique du QR code selon l'écran
+  // Taille dynamique du QR code et du logo selon l'écran
   const qrSize = scaleSize(isSmallScreen ? 100 : 120, screenWidth);
   const logoSize = scaleSize(56, screenWidth);
 
@@ -188,16 +192,16 @@ export default function InvoiceScreen() {
       }]}>
         {/* Logo & Header */}
         <View style={styles.receiptHeader}>
-          <View style={[styles.logoPlaceholder, { 
-            backgroundColor: theme.primary,
-            width: logoSize,
-            height: logoSize,
-            borderRadius: logoSize / 2,
-          }]}>
-            <Text style={[styles.logoText, { fontSize: scaleFont(22) }]}>
-              {settings.nom_etablissement.charAt(0)}
-            </Text>
-          </View>
+          {/* ✅ REMPLACEMENT : Image au lieu de la lettre */}
+          <Image
+            source={appIcon}
+            style={[styles.logoImage, {
+              width: logoSize,
+              height: logoSize,
+              borderRadius: logoSize / 2,
+            }]}
+            resizeMode="cover"
+          />
           <Text style={[styles.receiptTitle, { color: theme.text, fontSize: scaleFont(17) }]} numberOfLines={2}>
             {settings.nom_etablissement}
           </Text>
@@ -381,14 +385,9 @@ const styles = StyleSheet.create({
   receiptHeader: {
     alignItems: 'center',
   },
-  logoPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  // ✅ NOUVEAU STYLE pour l'image du logo
+  logoImage: {
     marginBottom: 12,
-  },
-  logoText: {
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   receiptTitle: {
     fontWeight: '700',
@@ -428,7 +427,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flex: 1,
-    minWidth: 0, // Permet le truncation du nom
+    minWidth: 0,
   },
   itemQty: {
     width: 28,

@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   PixelRatio,
-  Image, // ✅ Ajout de l'import Image
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,10 +22,8 @@ import { createOrder } from '@/src/database/orders';
 import { getSettings } from '@/src/database/settings';
 import { Order, OrderItem } from '@/src/types';
 
-// ✅ Import de ton icône - ADAPTE LE CHEMIN selon ton projet
 const appIcon = require('@/assets/images/icon.png');
 
-// Helpers responsifs
 const scaleSize = (size: number, width: number) => {
   const baseWidth = 375;
   return PixelRatio.roundToNearestPixel((width / baseWidth) * size);
@@ -40,7 +38,7 @@ export default function InvoiceScreen() {
   const params = useLocalSearchParams();
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? darkTheme : lightTheme;
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { items, getTotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
@@ -50,6 +48,8 @@ export default function InvoiceScreen() {
 
   const [orderId, setOrderId] = useState('');
   const [loading, setLoading] = useState(true);
+  // ✅ STATE pour l'affichage - déclenche le re-render contrairement au ref
+  const [displayItems, setDisplayItems] = useState<any[]>([]);
   const [settings, setSettings] = useState({
     nom_etablissement: 'Mon Restaurant',
     adresse: '',
@@ -58,8 +58,8 @@ export default function InvoiceScreen() {
     numero_fiscal: '',
   });
 
-  // ✅ useRef pour stocker les items - persiste entre les rendus
-  const savedItemsRef = useRef<any[]>([]);
+  // ✅ Guard pour capturer les items UNE SEULE FOIS au montage
+  const capturedRef = useRef(false);
 
   const method = (params.method as string) || 'cash';
   const total = Number(params.total) || getTotal();
@@ -70,19 +70,26 @@ export default function InvoiceScreen() {
     mobile_money: 'Mobile Money',
   };
 
+  // ✅ Capturer les items SYNCHRONE au premier render, avant tout async
+  if (!capturedRef.current && items.length > 0) {
+    capturedRef.current = true;
+    // On utilise setTimeout(0) pour ne pas bloquer le render initial
+    // mais garantir que le state est mis à jour avant clearCart
+    queueMicrotask(() => {
+      setDisplayItems([...items]);
+    });
+  }
+
   useEffect(() => {
     const processOrder = async () => {
       try {
-        const [settingsData] = await Promise.all([getSettings()]);
+        const settingsData = await getSettings();
         setSettings(settingsData);
 
         if (items.length === 0 && total === 0) {
           setLoading(false);
           return;
         }
-
-        // ✅ Sauvegarder les items dans le ref AVANT de vider le panier
-        savedItemsRef.current = [...items];
 
         const newOrderId = `ORD-${Date.now()}`;
         const order: Order = {
@@ -125,7 +132,7 @@ export default function InvoiceScreen() {
     }).format(amount);
   };
 
-  // ✅ Utiliser savedItemsRef.current pour le QR code
+  // ✅ Utiliser displayItems (state) pour le QR code
   const qrData = JSON.stringify({
     orderId,
     establishment: settings.nom_etablissement,
@@ -133,26 +140,25 @@ export default function InvoiceScreen() {
     total,
     method: methodLabels[method],
     cashier: user?.nom || 'N/A',
-    items: savedItemsRef.current.length > 0 ? savedItemsRef.current.map(i => ({
+    items: displayItems.length > 0 ? displayItems.map(i => ({
       name: i.product.nom,
       qty: i.quantite,
-      price: i.product.prix * i.quantite
-    })) : []
+      price: i.product.prix * i.quantite,
+    })) : [],
   });
 
   const handleNewSale = () => {
     router.replace('/tabs');
   };
 
-  // Taille dynamique du QR code et du logo selon l'écran
   const qrSize = scaleSize(isSmallScreen ? 100 : 120, screenWidth);
   const logoSize = scaleSize(56, screenWidth);
 
   if (loading) {
     return (
-      <View style={[styles.container, { 
-        backgroundColor: theme.background, 
-        justifyContent: 'center', 
+      <View style={[styles.container, {
+        backgroundColor: theme.background,
+        justifyContent: 'center',
         alignItems: 'center',
         paddingTop: insets.top,
       }]}>
@@ -165,15 +171,15 @@ export default function InvoiceScreen() {
   }
 
   return (
-    <ScrollView 
+    <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
       contentContainerStyle={{ paddingTop: insets.top }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
       <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
-        <TouchableOpacity 
-          onPress={() => router.replace('/tabs') as any} 
+        <TouchableOpacity
+          onPress={() => router.replace('/tabs') as any}
           style={styles.backButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
@@ -184,15 +190,14 @@ export default function InvoiceScreen() {
       </View>
 
       {/* Receipt Card */}
-      <View style={[styles.receipt, { 
-        backgroundColor: theme.card, 
+      <View style={[styles.receipt, {
+        backgroundColor: theme.card,
         borderColor: theme.border,
         marginHorizontal: horizontalPadding,
         padding: scaleSize(isSmallScreen ? 16 : 20, screenWidth),
       }]}>
         {/* Logo & Header */}
         <View style={styles.receiptHeader}>
-          {/* ✅ REMPLACEMENT : Image au lieu de la lettre */}
           <Image
             source={appIcon}
             style={[styles.logoImage, {
@@ -222,7 +227,6 @@ export default function InvoiceScreen() {
           ) : null}
         </View>
 
-        {/* Divider */}
         <View style={[styles.divider, { borderColor: theme.border }]} />
 
         {/* Order Info */}
@@ -241,17 +245,16 @@ export default function InvoiceScreen() {
           </Text>
         </View>
 
-        {/* Divider */}
         <View style={[styles.divider, { borderColor: theme.border }]} />
 
-        {/* ✅ Items : Utiliser savedItemsRef.current */}
+        {/* ✅ Items : displayItems (state) au lieu de savedItemsRef */}
         <View style={styles.itemsSection}>
-          {savedItemsRef.current.length === 0 && total > 0 ? (
+          {displayItems.length === 0 && total > 0 ? (
             <Text style={[styles.emptyItems, { color: theme.textSecondary, fontSize: scaleFont(13) }]}>
               Vente enregistrée
             </Text>
           ) : (
-            savedItemsRef.current.map((item, index) => (
+            displayItems.map((item, index) => (
               <View key={index} style={styles.itemRow}>
                 <View style={styles.itemLeft}>
                   <Text style={[styles.itemQty, { color: theme.textSecondary, fontSize: scaleFont(12) }]}>
@@ -269,7 +272,6 @@ export default function InvoiceScreen() {
           )}
         </View>
 
-        {/* Divider */}
         <View style={[styles.divider, { borderColor: theme.border }]} />
 
         {/* Total */}
@@ -288,7 +290,6 @@ export default function InvoiceScreen() {
             Merci de votre visite !
           </Text>
 
-          {/* QR Code réel */}
           <View style={[styles.qrContainer, { backgroundColor: theme.surface, padding: scaleSize(14, screenWidth) }]}>
             <QRCode
               value={qrData}
@@ -307,7 +308,7 @@ export default function InvoiceScreen() {
       {/* Actions */}
       <View style={[styles.actions, { paddingHorizontal: horizontalPadding, gap: isSmallScreen ? 10 : 12 }]}>
         <TouchableOpacity
-          style={[styles.actionButton, { 
+          style={[styles.actionButton, {
             backgroundColor: theme.primary,
             height: scaleSize(48, screenWidth),
           }]}
@@ -321,8 +322,8 @@ export default function InvoiceScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, { 
-            backgroundColor: theme.card, 
+          style={[styles.actionButton, {
+            backgroundColor: theme.card,
             borderColor: theme.border,
             height: scaleSize(48, screenWidth),
           }]}
@@ -335,8 +336,8 @@ export default function InvoiceScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, { 
-            backgroundColor: theme.card, 
+          style={[styles.actionButton, {
+            backgroundColor: theme.card,
             borderColor: theme.border,
             height: scaleSize(48, screenWidth),
           }]}
@@ -385,7 +386,6 @@ const styles = StyleSheet.create({
   receiptHeader: {
     alignItems: 'center',
   },
-  // ✅ NOUVEAU STYLE pour l'image du logo
   logoImage: {
     marginBottom: 12,
   },
